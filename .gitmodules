@@ -1,0 +1,3 @@
+[submodule "src/transformers/src/transformers/se3-transformer-public"]
+	path = src/transformers/src/transformers/se3-transformer-public
+	url = https://github.com/FabianFuchsML/se3-transformer-public.git
