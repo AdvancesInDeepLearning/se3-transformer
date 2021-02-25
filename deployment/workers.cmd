@@ -16,9 +16,12 @@ fi
 
 MY_PATH="$(dirname ${MY_PATH})"
 
-cd ~/projects/learning-to-understand/
-export PYTHONPATH=$PYTHONPATH:./
-source venv3/bin/activate
+#On DSLC the venv is not automatically enabled.
+#Thus, we manually navigate to where we need to be and acivate it manually
+cd ${MY_PATH}/../
+source ${MY_PATH}/../venv3/bin/activate
+
+#Tell slurm how many worker nodes shall be used
 srun --nodes=$1 python -u generate.py
 
 sleep infinity
