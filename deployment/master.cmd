@@ -16,9 +16,12 @@ fi
 
 MY_PATH="$(dirname ${MY_PATH})"
 
+#On DSLC the venv is not automatically enabled.
+#Thus, we manually navigate to where we need to be and acivate it manually
 cd ${MY_PATH}/../
-export PYTHONPATH=$PYTHONPATH:${MY_PATH}/../
 source ${MY_PATH}/../venv3/bin/activate
+
+#Run the python script by SLURM srun.
 srun python -u ${MY_PATH}/../supervise.py --daemon
 
 sleep infinity
