@@ -1,20 +1,5 @@
 #!/bin/bash
 
-function wait_for_file() {
-    local the_file="$1"
-
-    echo -n "Waiting for ${the_file} "
-    LOADING=("/" "-" "\\")
-    i=0
-    echo -ne "${LOADING[0]}"
-    while [[ ! -e "${the_file}" ]]; do
-        echo -ne "\b${LOADING[$i]}"
-        i=$(( (i + 1) % ${#LOADING[@]}))
-        sleep 0.1s
-    done
-    echo -e "\b\b. Found!"
-}
-
 function run_data_generator() {
   # Cleanup
   scancel -u $(whoami)
@@ -29,18 +14,23 @@ function run_data_generator() {
 
 # Default to three workers
 WORKER_NUM=${1:-5}
+SLEEP_TIME="15m"
 MY_PATH="$(dirname $(realpath $0))"
 
 # Cleanup old run
 rm -rf ${MY_PATH}/logs/*
 
+# We run it a single time outside the loop, since we expect the
+# Master node to drop a .lock-file once it's started.
+# This .lock-file will be removed by the master once everything is done
+# to indicate this SLURM script here to terminate.
 run_data_generator
-sleep 15m
+sleep $(SLEEP_TIME)
 
 # Loop master-worker initiation until completion
 while [[ -e "${MY_PATH}/../supervisor_lock.init" ]]; do
   run_data_generator
-  sleep 15m
+  sleep $(SLEEP_TIME)
 done
 
 # Stop all
