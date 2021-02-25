@@ -17,7 +17,7 @@ function wait_for_file() {
 
 function run_data_generator() {
   # Cleanup
-  scancel -u s2423286
+  scancel -u $(whoami)
 
   # Start iteration
   echo "Starting master node..." 1>&2
@@ -44,4 +44,4 @@ while [[ -e "${MY_PATH}/../supervisor_lock.init" ]]; do
 done
 
 # Stop all
-scancel -u s2423286
+scancel -u $(whoami)
