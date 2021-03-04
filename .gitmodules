@@ -4,3 +4,9 @@
 [submodule "src/simulations/deepmind-research"]
 	path = src/simulations/deepmind-research
 	url = https://github.com/deepmind/deepmind-research.git
+[submodule "lib/se3-transformer-public"]
+	path = lib/se3-transformer-public
+	url = https://github.com/FabianFuchsML/se3-transformer-public.git
+[submodule "lib/deepmind-research"]
+	path = lib/deepmind-research
+	url = https://github.com/deepmind/deepmind-research.git
