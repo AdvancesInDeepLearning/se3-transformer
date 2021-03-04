@@ -1,3 +1,6 @@
 [submodule "src/transformers/se3-transformers"]
 	path = src/transformers/se3-transformers
 	url = https://github.com/FabianFuchsML/se3-transformer-public
+[submodule "src/simulations/deepmind-research"]
+	path = src/simulations/deepmind-research
+	url = https://github.com/deepmind/deepmind-research.git
