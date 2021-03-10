@@ -6,6 +6,7 @@
 import dgl
 import torch
 import torch.nn as nn
+
 import src.utils.block as block
 
 
@@ -62,9 +63,12 @@ class DGLInteractionNetwork(nn.Module):
             received_edges_reducer=torch.scatter_add,
         )
 
-    def forward(self,
-                graph: dgl.DGLGraph,
-                edge_model_kwargs: dict = None,
-                node_model_kwargs: dict = None):
+    def forward(
+        self,
+        graph: dgl.DGLGraph,
+        edge_model_kwargs: dict = None,
+        node_model_kwargs: dict = None,
+    ):
         return self._node_block(
-            self._edge_block(graph, edge_model_kwargs), node_model_kwargs)
+            self._edge_block(graph, edge_model_kwargs), node_model_kwargs
+        )

@@ -9,8 +9,8 @@ This one ties the whole Encode-Process-Decode together:
 """
 
 import dgl
-import torch.nn as nn
 import torch
+import torch.nn as nn
 
 import src.graph_models as graph_models
 import src.utils.mlp as mlp
@@ -51,7 +51,12 @@ class EncodeProcessDecode(nn.Module):
             )
 
         # Create decoder network
-        self._decoder_network = mlp.MLP(in_size=hidden_size, hidden_size=hidden_size, out_size=out_size, n_layers=n_layers)
+        self._decoder_network = mlp.MLP(
+            in_size=hidden_size,
+            hidden_size=hidden_size,
+            out_size=out_size,
+            n_layers=n_layers,
+        )
 
     def forward(self, in_graph: dgl.DGLGraph) -> torch.Tensor:
         # Encode the input_graph.
