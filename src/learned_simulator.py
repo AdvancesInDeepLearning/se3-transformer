@@ -41,12 +41,8 @@ class EncodeProcessDecode(nn.Module):
         for _ in range(num_message_passing_steps):
             self._processor_networks.append(
                 DGLInteractionNetwork(
-                    edge_model_fn=LayerNormMLP(
-                        hidden_size, latent_size, n_layers
-                    ),
-                    node_model_fn=LayerNormMLP(
-                        hidden_size, latent_size, n_layers
-                    ),
+                    edge_model_fn=LayerNormMLP(hidden_size, latent_size, n_layers),
+                    node_model_fn=LayerNormMLP(hidden_size, latent_size, n_layers),
                 )
             )
 

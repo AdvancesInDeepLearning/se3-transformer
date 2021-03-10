@@ -21,7 +21,9 @@ class MLP(nn.Module):
             ]
 
         # Output
-        self.output = [nn.Linear(in_features=self.hidden_size, out_features=self.out_size)]
+        self.output = [
+            nn.Linear(in_features=self.hidden_size, out_features=self.out_size)
+        ]
 
     def _compile(self, in_size: int):
         if self.compiled:
