@@ -50,7 +50,7 @@ class DGLGraphIndependent(nn.Module):
         for key in graph.ndata.keys():
             graph.ndata[key] = self._node_model(graph.ndata[key])
         for key in graph.edata.keys():
-            graph.edata[key] = self._node_model(graph.edata[key])
+            graph.edata[key] = self._edge_model(graph.edata[key])
         return graph
 
 
