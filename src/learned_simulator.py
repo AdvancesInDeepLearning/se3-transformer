@@ -17,15 +17,31 @@ from src.utils.mlp import MLP, LayerNormMLP
 
 
 class EncodeProcessDecode(nn.Module):
+    """
+    Graph -> Encode -> Magic -> Decode -> Graph.
+
+    == learned physics!
+
+    Parameters
+    ----------
+    hidden_size: Hidden units of MLP layers.
+    latent_size: Hidden size between Encode/Process/Decode.
+    out_size: Final output shape.
+    n_layers: Number of hidden layers.
+    num_message_passing_steps: ...
+    """
     def __init__(
         self,
-        in_size: int,
         hidden_size: int,
         latent_size: int,
         out_size: int,
         n_layers: int,
         num_message_passing_steps: int,
     ):
+        """
+
+
+        """
         super().__init__()
 
         # Create encoder network
@@ -55,24 +71,16 @@ class EncodeProcessDecode(nn.Module):
 
     def forward(self, in_graph: dgl.DGLGraph) -> torch.Tensor:
         # Encode the input_graph.
-        latent_graph_0 = self._encode(in_graph)
+        latent_graph_0 = self._encoder_network(in_graph)
 
         # Do `m` message passing steps in the latent graphs.
         latent_graph_m = self._process(latent_graph_0)
 
         # Decode from the last latent graph.
-        return self._decode(latent_graph_m)
-
-    def _encode(self, in_graph: dgl.DGLGraph) -> dgl.DGLGraph:
-        # Do we use globals? If so, broadcast global states to each node
-        # Encode node and edge features
-        return self._encoder_network(in_graph)
+        for key in latent_graph_m.ndata.keys():
+            latent_graph_m.ndata[key] = self._decoder_network(latent_graph_m.ndata[key])
+        return torch.cat([latent_graph_m.ndata[key] for key in latent_graph_m.ndata.keys()], 0)
 
     def _process(self, latent_graph: dgl.DGLGraph) -> dgl.DGLGraph:
         # @TODO: Implement
-        pass
-
-    def _decode(self, latent_graph: dgl.DGLGraph) -> torch.Tensor:
-        for key in latent_graph.ndata.keys():
-            latent_graph.ndata[key] = self._node_model(latent_graph.ndata[key])
-        return torch.cat([latent_graph[t] for t in latent_graph.keys()], 0)
+        return latent_graph
