@@ -1,19 +1,24 @@
+from functools import reduce
+
 import torch
 import torch.nn as nn
-from functools import reduce
 
 
 class MLP(nn.Module):
     def __init__(self, in_size: int, hidden_size: int, out_size: int, n_layers: int):
         super(MLP, self).__init__()
 
-        self.input = [nn.Linear(in_features=in_size, out_features=hidden_size), nn.ReLU()]
+        self.input = [
+            nn.Linear(in_features=in_size, out_features=hidden_size),
+            nn.ReLU(),
+        ]
         self.output = [nn.Linear(in_features=hidden_size, out_features=out_size)]
         self.hidden = []
 
-        for i in range(n_layers-2):
+        for i in range(n_layers - 2):
             self.hidden += [
-                nn.Linear(in_features=hidden_size, out_features=hidden_size), nn.ReLU()
+                nn.Linear(in_features=hidden_size, out_features=hidden_size),
+                nn.ReLU(),
             ]
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
