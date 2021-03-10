@@ -4,7 +4,9 @@
 * Let's go wild...
 """
 import dgl
+import torch
 import torch.nn as nn
+import src.utils.block as block
 
 
 class DGLGraphIndependent(nn.Module):
@@ -33,28 +35,36 @@ class DGLGraphIndependent(nn.Module):
             self._node_model = node_model_fn
 
     def forward(self, graph: dgl.DGLGraph) -> dgl.DGLGraph:
+        # @TODO: Fix graph dataformat
         graph.apply_nodes(self._node_model)
         graph.apply_edges(self._edge_model)
         return graph
 
 
-# class DGLInteractionNetwork(nn.Module):
-#     """
-#     An interaction networks computes interactions on the edges based on the
-#     previous edges features, and on the features of the nodes sending into those
-#     edges. It then updates the nodes based on the incomming updated edges.
-#     """
-#
-#     def __init__(self, edge_model_fn: nn.Module, node_model_fn: nn.Module):
-#         super(DGLInteractionNetwork, self).__init__()
-#
-#         self._edge_block = blocks.EdgeBlock(
-#             edge_model_fn=edge_model_fn, use_globals=False
-#         )
-#
-#         self._node_block = blocks.NodeBlock(
-#             node_model_fn=node_model_fn,
-#             use_sent_edges=False,
-#             use_globals=False,
-#             received_edges_reducer=reducer,
-#         )
+class DGLInteractionNetwork(nn.Module):
+    """
+    An interaction networks computes interactions on the edges based on the
+    previous edges features, and on the features of the nodes sending into those
+    edges. It then updates the nodes based on the incomming updated edges.
+    """
+
+    def __init__(self, edge_model_fn: nn.Module, node_model_fn: nn.Module):
+        super(DGLInteractionNetwork, self).__init__()
+
+        self._edge_block = block.EdgeBlock(
+            edge_model_fn=edge_model_fn, use_globals=False
+        )
+
+        self._node_block = block.NodeBlock(
+            node_model_fn=node_model_fn,
+            use_sent_edges=False,
+            use_globals=False,
+            received_edges_reducer=torch.scatter_add,
+        )
+
+    def forward(self,
+                graph: dgl.DGLGraph,
+                edge_model_kwargs: dict = None,
+                node_model_kwargs: dict = None):
+        return self._node_block(
+            self._edge_block(graph, edge_model_kwargs), node_model_kwargs)
