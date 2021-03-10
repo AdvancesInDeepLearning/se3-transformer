@@ -78,6 +78,6 @@ class EncodeProcessDecode(nn.Module):
         pass
 
     def _decode(self, latent_graph: dgl.DGLGraph) -> torch.Tensor:
-        # Actually feed latent_graph.nodes as a Tensor into the model
-        # @TODO: Implement
-        pass
+        for key in latent_graph.ndata.keys():
+            latent_graph.ndata[key] = self._node_model(latent_graph.ndata[key])
+        return torch.cat([latent_graph[t] for t in latent_graph.keys()], 0)
