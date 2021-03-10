@@ -18,17 +18,26 @@ class DGLGraphIndependent(nn.Module):
         if edge_model_fn is None:
             self._edge_model = lambda x: x
         else:
-            self._edge_model = _base.WrappedModelFnModule(
-                edge_model_fn, name="edge_model")
+            self._edge_model = edge_model_fn
 
         if node_model_fn is None:
             self._node_model = lambda x: x
         else:
-            self._node_model = _base.WrappedModelFnModule(
-                node_model_fn, name="node_model")
+            self._node_model = node_model_fn
 
         if global_model_fn is None:
             self._global_model = lambda x: x
         else:
-            self._global_model = _base.WrappedModelFnModule(
-                global_model_fn, name="global_model")
+            self._global_model = global_model_fn
+
+    def forward(self, graph,
+             edge_model_kwargs=None,
+             node_model_kwargs=None,
+             global_model_kwargs=None):
+        pass
+
+
+class DGLInteractionNetwork(nn.Module):
+    def __init__(self):
+        super(DGLInteractionNetwork, self).__init__()
+        pass
