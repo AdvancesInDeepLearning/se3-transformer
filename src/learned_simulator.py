@@ -31,8 +31,8 @@ class EncodeProcessDecode(nn.Module):
         # Create encoder network
         # The encoder graph network independently encodes edge and node features.
         encoder_kwargs = dict(
-            edge_model_fn=LayerNormMLP(in_size, hidden_size, latent_size, n_layers),
-            node_model_fn=LayerNormMLP(in_size, hidden_size, latent_size, n_layers),
+            edge_model_fn=LayerNormMLP(hidden_size, latent_size, n_layers),
+            node_model_fn=LayerNormMLP(hidden_size, latent_size, n_layers),
         )
         self._encoder_network = DGLGraphIndependent(**encoder_kwargs)
 
@@ -42,17 +42,16 @@ class EncodeProcessDecode(nn.Module):
             self._processor_networks.append(
                 DGLInteractionNetwork(
                     edge_model_fn=LayerNormMLP(
-                        latent_size, hidden_size, latent_size, n_layers
+                        hidden_size, latent_size, n_layers
                     ),
                     node_model_fn=LayerNormMLP(
-                        latent_size, hidden_size, latent_size, n_layers
+                        hidden_size, latent_size, n_layers
                     ),
                 )
             )
 
         # Create decoder network
         self._decoder_network = MLP(
-            in_size=hidden_size,
             hidden_size=hidden_size,
             out_size=out_size,
             n_layers=n_layers,
