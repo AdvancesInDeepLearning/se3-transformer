@@ -18,9 +18,10 @@ import src.utils.mlp as mlp
 class EncodeProcessDecode(nn.Module):
     def __init__(
         self,
+        in_size: int,
         hidden_size: int,
-        hidden_layers: int,
-        latent_size: int,
+        out_size: int,
+        n_layers: int,
         num_message_passing_steps: int,
     ):
         super().__init__()
@@ -28,8 +29,8 @@ class EncodeProcessDecode(nn.Module):
         # Create encoder network
         # The encoder graph network independently encodes edge and node features.
         encoder_kwargs = dict(
-            edge_model_fn=mlp.LayerNormMLP(hidden_size, hidden_layers, latent_size),
-            node_model_fn=mlp.LayerNormMLP(hidden_size, hidden_layers, latent_size),
+            edge_model_fn=mlp.LayerNormMLP(in_size, hidden_size, out_size, n_layers),
+            node_model_fn=mlp.LayerNormMLP(in_size, hidden_size, out_size, n_layers),
         )
         self._encoder_network = graph_models.DGLGraphIndependent(**encoder_kwargs)
 

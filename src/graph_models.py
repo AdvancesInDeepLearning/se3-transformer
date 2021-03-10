@@ -5,7 +5,6 @@
 """
 import dgl
 import torch.nn as nn
-from torch.autograd import Variable
 
 
 class DGLGraphIndependent(nn.Module):
@@ -34,29 +33,28 @@ class DGLGraphIndependent(nn.Module):
             self._node_model = node_model_fn
 
     def forward(self, graph: dgl.DGLGraph) -> dgl.DGLGraph:
-        X = graph.ndata
-        self._node_model(X)
+        graph.apply_nodes(self._node_model)
         graph.apply_edges(self._edge_model)
         return graph
 
 
-class DGLInteractionNetwork(nn.Module):
-    """
-    An interaction networks computes interactions on the edges based on the
-    previous edges features, and on the features of the nodes sending into those
-    edges. It then updates the nodes based on the incomming updated edges.
-    """
-
-    def __init__(self, edge_model_fn: nn.Module, node_model_fn: nn.Module):
-        super(DGLInteractionNetwork, self).__init__()
-
-        self._edge_block = blocks.EdgeBlock(
-            edge_model_fn=edge_model_fn, use_globals=False
-        )
-
-        self._node_block = blocks.NodeBlock(
-            node_model_fn=node_model_fn,
-            use_sent_edges=False,
-            use_globals=False,
-            received_edges_reducer=reducer,
-        )
+# class DGLInteractionNetwork(nn.Module):
+#     """
+#     An interaction networks computes interactions on the edges based on the
+#     previous edges features, and on the features of the nodes sending into those
+#     edges. It then updates the nodes based on the incomming updated edges.
+#     """
+#
+#     def __init__(self, edge_model_fn: nn.Module, node_model_fn: nn.Module):
+#         super(DGLInteractionNetwork, self).__init__()
+#
+#         self._edge_block = blocks.EdgeBlock(
+#             edge_model_fn=edge_model_fn, use_globals=False
+#         )
+#
+#         self._node_block = blocks.NodeBlock(
+#             node_model_fn=node_model_fn,
+#             use_sent_edges=False,
+#             use_globals=False,
+#             received_edges_reducer=reducer,
+#         )
