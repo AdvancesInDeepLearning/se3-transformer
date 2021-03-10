@@ -36,9 +36,21 @@ class DGLGraphIndependent(nn.Module):
             self._node_model = node_model_fn
 
     def forward(self, graph: dgl.DGLGraph) -> dgl.DGLGraph:
-        # @TODO: Fix graph dataformat
-        graph.apply_nodes(self._node_model)
-        graph.apply_edges(self._edge_model)
+        """
+        Transform each feature of nodes and edges by two separate non-linear MLPs,
+        thus independent of each other.
+        Parameters
+        ----------
+        graph: Graph with initial features.
+
+        Returns
+        -------
+        Graph with latent features.
+        """
+        for key in graph.ndata.keys():
+            graph.ndata[key] = self._node_model(graph.ndata[key])
+        for key in graph.edata.keys():
+            graph.edata[key] = self._node_model(graph.edata[key])
         return graph
 
 
