@@ -2,8 +2,16 @@ import torch.nn as nn
 
 
 class LayerNormMLP(nn.Module):
-    def __init__(self, hidden_size, hidden_layers, latent_size):
+    def __init__(self, hidden_size, num_layers, latent_size):
         super(LayerNormMLP, self).__init__()
 
-    def forward(self):
-        pass
+        self.layers = []
+        for i in range(num_layers-1):
+            self.layers.append(nn.Linear(in_features=hidden_size, out_features=hidden_size))
+        self.layers.append(nn.Linear(in_features=hidden_size, out_features=latent_size))
+        self.layers.append(nn.LayerNorm(normalized_shape=latent_size))
+
+    def forward(self, x):
+        for i, _ in enumerate(self.layers):
+            x = self.layers[i](x)
+        return x
