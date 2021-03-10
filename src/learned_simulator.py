@@ -30,6 +30,7 @@ class EncodeProcessDecode(nn.Module):
     n_layers: Number of hidden layers.
     num_message_passing_steps: ...
     """
+
     def __init__(
         self,
         hidden_size: int,
@@ -38,10 +39,6 @@ class EncodeProcessDecode(nn.Module):
         n_layers: int,
         num_message_passing_steps: int,
     ):
-        """
-
-
-        """
         super().__init__()
 
         # Create encoder network
@@ -79,7 +76,9 @@ class EncodeProcessDecode(nn.Module):
         # Decode from the last latent graph.
         for key in latent_graph_m.ndata.keys():
             latent_graph_m.ndata[key] = self._decoder_network(latent_graph_m.ndata[key])
-        return torch.cat([latent_graph_m.ndata[key] for key in latent_graph_m.ndata.keys()], 0)
+        return torch.cat(
+            [latent_graph_m.ndata[key] for key in latent_graph_m.ndata.keys()], 0
+        )
 
     def _process(self, latent_graph: dgl.DGLGraph) -> dgl.DGLGraph:
         # @TODO: Implement
