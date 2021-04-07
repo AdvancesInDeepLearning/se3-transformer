@@ -82,4 +82,6 @@ class EncodeProcessDecode(nn.Module):
 
     def _process(self, latent_graph: dgl.DGLGraph) -> dgl.DGLGraph:
         # @TODO: Implement
+        for p in self._processor_networks:
+            latent_graph = p(latent_graph)
         return latent_graph

@@ -1,7 +1,8 @@
+from typing import Dict
+
 import dgl
 import torch
 import torch.nn as nn
-from typing import Dict
 
 
 class NodeBlock(nn.Module):
@@ -31,14 +32,19 @@ class NodeBlock(nn.Module):
             :return: A tensor of same data type as the data argument.
             """
             assert all(
-                [i in data.shape for i in segment_ids.shape]), "segment_ids.shape should be a prefix of data.shape"
+                [i in data.shape for i in segment_ids.shape]
+            ), "segment_ids.shape should be a prefix of data.shape"
 
             # segment_ids is a 1-D tensor repeat it to have the same shape as data
             if len(segment_ids.shape) == 1:
                 s = torch.prod(torch.tensor(data.shape[1:])).long()
-                segment_ids = segment_ids.repeat_interleave(s).view(segment_ids.shape[0], *data.shape[1:])
+                segment_ids = segment_ids.repeat_interleave(s).view(
+                    segment_ids.shape[0], *data.shape[1:]
+                )
 
-            assert data.shape == segment_ids.shape, "data.shape and segment_ids.shape should be equal"
+            assert (
+                data.shape == segment_ids.shape
+            ), "data.shape and segment_ids.shape should be equal"
 
             shape = [num_segments] + list(data.shape[1:])
             tensor = torch.zeros(*shape).scatter_add(0, segment_ids, data.float())
@@ -51,8 +57,12 @@ class NodeBlock(nn.Module):
             # else:
             #     num_nodes = tf.reduce_sum(graph.n_node)
             indices = torch.vstack(graph.edges())[int(self._use_sent_edges), :]
-            return {feat: self.unsorted_segment_sum(graph.edata[feat], indices, int(graph.ndata[feat].shape[0]))
-                    for feat in graph.edata.keys()}
+            return {
+                feat: self.unsorted_segment_sum(
+                    graph.edata[feat], indices, int(graph.ndata[feat].shape[0])
+                )
+                for feat in graph.edata.keys()
+            }
 
             # return self._reducer(graph.edges, indices, num_nodes)
 
@@ -84,7 +94,8 @@ class NodeBlock(nn.Module):
     ):
         super().__init__()
         self._received_edges_aggregator = self._ReceivedEdgesToNodesAggregator(
-            received_edges_reducer)
+            received_edges_reducer
+        )
         self._use_received_edges = use_received_edges
         self._use_nodes = use_nodes
         self.node_model = node_model_fn
@@ -94,10 +105,14 @@ class NodeBlock(nn.Module):
             node_model_kwargs = {}
 
         received_edges = self._received_edges_aggregator(graph)
-        nodes_to_collect = {feat: torch.cat((graph.ndata[feat], received_edges[feat]), dim=-1)
-                            for feat in graph.edata.keys()}
+        nodes_to_collect = {
+            feat: torch.cat((graph.ndata[feat], received_edges[feat]), dim=-1)
+            for feat in graph.edata.keys()
+        }
         for feat in graph.ndata.keys():
-            graph.ndata[feat] = self.node_model(nodes_to_collect[feat], **node_model_kwargs)
+            graph.ndata[feat] = self.node_model(
+                nodes_to_collect[feat], **node_model_kwargs
+            )
         return graph
 
 
@@ -118,15 +133,23 @@ class EdgeBlock(nn.Module):
 
         edges_from = self._broadcast_target_nodes_to_edges(graph, target=0)
         edges_to = self._broadcast_target_nodes_to_edges(graph, target=1)
-        edges_to_collect = {feat: torch.cat((graph.edata[feat], edges_from[feat], edges_to[feat]), dim=-1)
-                            for feat in graph.edata.keys()}
+        edges_to_collect = {
+            feat: torch.cat(
+                (graph.edata[feat], edges_from[feat], edges_to[feat]), dim=-1
+            )
+            for feat in graph.edata.keys()
+        }
 
         for feat in graph.edata.keys():
-            graph.edata[feat] = self._edge_model(edges_to_collect[feat], **edge_model_kwargs)
+            graph.edata[feat] = self._edge_model(
+                edges_to_collect[feat], **edge_model_kwargs
+            )
         return graph
 
     @staticmethod
-    def _broadcast_target_nodes_to_edges(graph: dgl.DGLGraph, target: int) -> Dict[str, torch.tensor]:
+    def _broadcast_target_nodes_to_edges(
+        graph: dgl.DGLGraph, target: int
+    ) -> Dict[str, torch.tensor]:
         """
         Broadcasts the node features to the edges they are receiving from.
 
