@@ -1,6 +1,7 @@
 import dgl
 import torch
 import torch.nn as nn
+from typing import List
 
 
 class NodeBlock(nn.Module):
@@ -58,18 +59,29 @@ class EdgeBlock(nn.Module):
     def __init__(
         self,
         edge_model_fn,
-        use_edges=True,
-        use_receiver_nodes=True,
-        use_sender_nodes=True,
-        use_globals=True,
     ):
         super().__init__()
+        self._use_edges = True
+        self._use_receiver_nodes = True
+        self._use_sender_nodes = True
+        self._edge_model = edge_model_fn
 
-    def forward(self):
-        # @TODO: Implement
-        pass
+    def forward(self, graph: dgl.DGLGraph, edge_model_kwargs: dict = None):
+        if edge_model_kwargs is None:
+            edge_model_kwargs = {}
 
-    def _broadcast_target_nodes_to_edges(graph: dgl.DGLGraph, target: torch.Tensor):
+        edges_to_collect = [
+            *[torch.tensor(graph.edata[key]) for key in graph.edata.keys()],
+            *self._broadcast_target_nodes_to_edges(graph, target=0),
+            *self._broadcast_target_nodes_to_edges(graph, target=1),
+        ]
+
+        collected_edges = torch.cat(edges_to_collect, dim=1)
+        updated_edges = self._edge_model(collected_edges, **edge_model_kwargs)
+        return graph.replace(edges=updated_edges)
+
+    @staticmethod
+    def _broadcast_target_nodes_to_edges(graph: dgl.DGLGraph, target: int) -> List[torch.tensor]:
         """
         Broadcasts the node features to the edges they are receiving from.
 
@@ -84,4 +96,5 @@ class EdgeBlock(nn.Module):
         A tensor of shape `[n_edges] + node_shape`, where `n_edges = sum(graph.n_edge)`.
         The i-th element is given by `graph.nodes[graph.receivers[i]]`.
         """
-        pass
+        target_nodes = torch.vstack(graph.edges())[target, :]
+        return [graph.ndata[key][target_nodes] for key in graph.edata.keys()]
