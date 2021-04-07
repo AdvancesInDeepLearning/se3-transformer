@@ -63,12 +63,11 @@ class DGLInteractionNetwork(nn.Module):
     def __init__(self, edge_model_fn: nn.Module, node_model_fn: nn.Module):
         super(DGLInteractionNetwork, self).__init__()
 
-        self._edge_block = EdgeBlock(edge_model_fn=edge_model_fn, use_globals=False)
+        self._edge_block = EdgeBlock(edge_model_fn=edge_model_fn)
 
         self._node_block = NodeBlock(
             node_model_fn=node_model_fn,
             use_sent_edges=False,
-            use_globals=False,
             received_edges_reducer=torch.scatter_add,
         )
 
