@@ -77,11 +77,10 @@ class EncodeProcessDecode(nn.Module):
         for key in latent_graph_m.ndata.keys():
             latent_graph_m.ndata[key] = self._decoder_network(latent_graph_m.ndata[key])
         return torch.cat(
-            [latent_graph_m.ndata[key] for key in latent_graph_m.ndata.keys()], 0
+            [latent_graph_m.ndata[key] for key in latent_graph_m.ndata.keys()], dim=0
         )
 
     def _process(self, latent_graph: dgl.DGLGraph) -> dgl.DGLGraph:
-        # @TODO: Implement
         for p in self._processor_networks:
             latent_graph = p(latent_graph)
         return latent_graph
