@@ -1,12 +1,20 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import time
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 class SpringSim(object):
-    def __init__(self, n_balls=5, box_size=5., loc_std=.5, vel_norm=.5,
-                 interaction_strength=.1, noise_var=0.,
-                 dim=2):
+    def __init__(
+        self,
+        n_balls=5,
+        box_size=5.0,
+        loc_std=0.5,
+        vel_norm=0.5,
+        interaction_strength=0.1,
+        noise_var=0.0,
+        dim=2,
+    ):
         self.n_balls = n_balls
         self.box_size = box_size
         self.loc_std = loc_std
@@ -16,13 +24,13 @@ class SpringSim(object):
 
         self.dim = dim
 
-        self._spring_types = np.array([0., 0.5, 1.])
+        self._spring_types = np.array([0.0, 0.5, 1.0])
         self._delta_T = 0.001
         self._max_F = 0.1 / self._delta_T
 
     def _energy(self, loc, vel, edges):
         # disables division by zero warning, since I fix it with fill_diagonal
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
 
             K = 0.5 * (vel ** 2).sum()
             U = 0
@@ -31,25 +39,30 @@ class SpringSim(object):
                     if i != j:
                         r = loc[:, i] - loc[:, j]
                         dist = np.sqrt((r ** 2).sum())
-                        U += 0.5 * self.interaction_strength * edges[
-                            i, j] * (dist ** 2) / 2
+                        U += (
+                            0.5
+                            * self.interaction_strength
+                            * edges[i, j]
+                            * (dist ** 2)
+                            / 2
+                        )
             return U + K, U, K
 
     def _clamp(self, loc, vel):
-        '''
+        """
         :param loc: dim x N location at one time stamp
         :param vel: dim x N velocity at one time stamp
         :return: location and velocity after hiting walls and returning after
             elastically colliding with walls
-        '''
+        """
         clamp = np.zeros([loc.shape[1]])
         if self.box_size > 1e-5:
-            assert (np.all(loc < self.box_size * 3))
-            assert (np.all(loc > -self.box_size * 3))
+            assert np.all(loc < self.box_size * 3)
+            assert np.all(loc > -self.box_size * 3)
 
             over = loc > self.box_size
             loc[over] = 2 * self.box_size - loc[over]
-            assert (np.all(loc <= self.box_size))
+            assert np.all(loc <= self.box_size)
 
             # assert(np.all(vel[over]>0))
             vel[over] = -np.abs(vel[over])
@@ -57,7 +70,7 @@ class SpringSim(object):
             under = loc < -self.box_size
             loc[under] = -2 * self.box_size - loc[under]
             # assert (np.all(vel[under] < 0))
-            assert (np.all(loc >= -self.box_size))
+            assert np.all(loc >= -self.box_size)
             vel[under] = np.abs(vel[under])
 
             clamp[over[0, :]] = 1
@@ -78,18 +91,19 @@ class SpringSim(object):
         dist = A_norm + B_norm - 2 * A.dot(B.transpose())
         return dist
 
-    def sample_trajectory(self, T=10000, sample_freq=10,
-                          spring_prob=[1. / 2, 0, 1. / 2]):
+    def sample_trajectory(
+        self, T=10000, sample_freq=10, spring_prob=[1.0 / 2, 0, 1.0 / 2]
+    ):
         n = self.n_balls
-        assert (T % sample_freq == 0)
+        assert T % sample_freq == 0
         T_save = int(T / sample_freq - 1)
         diag_mask = np.ones((n, n), dtype=bool)
         np.fill_diagonal(diag_mask, 0)
         counter = 0
         # Sample edges
-        edges = np.random.choice(self._spring_types,
-                                 size=(self.n_balls, self.n_balls),
-                                 p=spring_prob)
+        edges = np.random.choice(
+            self._spring_types, size=(self.n_balls, self.n_balls), p=spring_prob
+        )
         edges = np.tril(edges) + np.tril(edges, -1).T
         np.fill_diagonal(edges, 0)
         # Initialize location and velocity
@@ -98,35 +112,53 @@ class SpringSim(object):
         clamp = np.zeros((T_save, n))
         loc_next = np.random.randn(self.dim, n) * self.loc_std
         vel_next = np.random.randn(self.dim, n)
-        clamp_next = np.zeros([n,])
+        clamp_next = np.zeros(
+            [
+                n,
+            ]
+        )
         v_norm = np.sqrt((vel_next ** 2).sum(axis=0)).reshape(1, -1)
         vel_next = vel_next * self.vel_norm / v_norm
         loc[0, :, :], vel[0, :, :], clamp[0, :] = self._clamp(loc_next, vel_next)
 
         # disables division by zero warning, since I fix it with fill_diagonal
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
 
-            forces_size = - self.interaction_strength * edges
-            np.fill_diagonal(forces_size,
-                             0)  # self forces are zero (fixes division by zero)
+            forces_size = -self.interaction_strength * edges
+            np.fill_diagonal(
+                forces_size, 0
+            )  # self forces are zero (fixes division by zero)
             if self.dim == 2:
-                F = (forces_size.reshape(1, n, n) *
-                     np.concatenate((
-                         np.subtract.outer(loc_next[0, :],
-                                           loc_next[0, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[1, :],
-                                           loc_next[1, :]).reshape(1, n, n)))).sum(
-                    axis=-1)
+                F = (
+                    forces_size.reshape(1, n, n)
+                    * np.concatenate(
+                        (
+                            np.subtract.outer(loc_next[0, :], loc_next[0, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[1, :], loc_next[1, :]).reshape(
+                                1, n, n
+                            ),
+                        )
+                    )
+                ).sum(axis=-1)
             elif self.dim == 3:
-                F = (forces_size.reshape(1, n, n) *
-                     np.concatenate((
-                         np.subtract.outer(loc_next[0, :],
-                                           loc_next[0, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[1, :],
-                                           loc_next[1, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[2, :],
-                                           loc_next[2, :]).reshape(1, n, n)))).sum(
-                    axis=-1)
+                F = (
+                    forces_size.reshape(1, n, n)
+                    * np.concatenate(
+                        (
+                            np.subtract.outer(loc_next[0, :], loc_next[0, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[1, :], loc_next[1, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[2, :], loc_next[2, :]).reshape(
+                                1, n, n
+                            ),
+                        )
+                    )
+                ).sum(axis=-1)
 
             F[F > self._max_F] = self._max_F
             F[F < -self._max_F] = -self._max_F
@@ -141,34 +173,48 @@ class SpringSim(object):
                 clamp_next[clamp_this_i == 1] = 1
 
                 if i % sample_freq == 0:
-                    loc[counter, :, :], vel[counter, :, :], clamp[counter, :] \
-                        = loc_next, vel_next, clamp_next
+                    loc[counter, :, :], vel[counter, :, :], clamp[counter, :] = (
+                        loc_next,
+                        vel_next,
+                        clamp_next,
+                    )
                     clamp_next *= 0
                     counter += 1
 
-                forces_size = - self.interaction_strength * edges
+                forces_size = -self.interaction_strength * edges
                 np.fill_diagonal(forces_size, 0)
                 # assert (np.abs(forces_size[diag_mask]).min() > 1e-10)
                 if self.dim == 2:
-                    F = (forces_size.reshape(1, n, n) *
-                         np.concatenate((
-                             np.subtract.outer(loc_next[0, :],
-                                               loc_next[0, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[1, :],
-                                               loc_next[1, :]).reshape(1, n,
-                                                                       n)))).sum(
-                        axis=-1)
+                    F = (
+                        forces_size.reshape(1, n, n)
+                        * np.concatenate(
+                            (
+                                np.subtract.outer(
+                                    loc_next[0, :], loc_next[0, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[1, :], loc_next[1, :]
+                                ).reshape(1, n, n),
+                            )
+                        )
+                    ).sum(axis=-1)
                 elif self.dim == 3:
-                    F = (forces_size.reshape(1, n, n) *
-                         np.concatenate((
-                             np.subtract.outer(loc_next[0, :],
-                                               loc_next[0, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[1, :],
-                                               loc_next[1, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[2, :],
-                                               loc_next[2, :]).reshape(1, n,
-                                                                       n)))).sum(
-                        axis=-1)
+                    F = (
+                        forces_size.reshape(1, n, n)
+                        * np.concatenate(
+                            (
+                                np.subtract.outer(
+                                    loc_next[0, :], loc_next[0, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[1, :], loc_next[1, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[2, :], loc_next[2, :]
+                                ).reshape(1, n, n),
+                            )
+                        )
+                    ).sum(axis=-1)
 
                 F[F > self._max_F] = self._max_F
                 F[F < -self._max_F] = -self._max_F
@@ -180,9 +226,16 @@ class SpringSim(object):
 
 
 class ChargedParticlesSim(object):
-    def __init__(self, n_balls=5, box_size=5., loc_std=1., vel_norm=0.5,
-                 interaction_strength=1., noise_var=0.,
-                 dim = 2):
+    def __init__(
+        self,
+        n_balls=5,
+        box_size=5.0,
+        loc_std=1.0,
+        vel_norm=0.5,
+        interaction_strength=1.0,
+        noise_var=0.0,
+        dim=2,
+    ):
         self.n_balls = n_balls
         self.box_size = box_size
         self.loc_std = loc_std
@@ -192,7 +245,7 @@ class ChargedParticlesSim(object):
 
         self.dim = dim
 
-        self._charge_types = np.array([-1., 0., 1.])
+        self._charge_types = np.array([-1.0, 0.0, 1.0])
         self._delta_T = 0.001
         self._max_F = 0.1 / self._delta_T
 
@@ -212,7 +265,7 @@ class ChargedParticlesSim(object):
     def _energy(self, loc, vel, edges):
 
         # disables division by zero warning, since I fix it with fill_diagonal
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
 
             K = 0.5 * (vel ** 2).sum()
             U = 0
@@ -221,25 +274,24 @@ class ChargedParticlesSim(object):
                     if i != j:
                         r = loc[:, i] - loc[:, j]
                         dist = np.sqrt((r ** 2).sum())
-                        U += 0.5 * self.interaction_strength * edges[
-                            i, j] / dist
+                        U += 0.5 * self.interaction_strength * edges[i, j] / dist
             return U + K, U, K
 
     def _clamp(self, loc, vel):
-        '''
+        """
         :param loc: 2xN location at one time stamp
         :param vel: 2xN velocity at one time stamp
         :return: location and velocity after hiting walls and returning after
             elastically colliding with walls
-        '''
+        """
         clamp = np.zeros([loc.shape[1]])
         if self.box_size > 1e-6:
-            assert (np.all(loc < self.box_size * 3))
-            assert (np.all(loc > -self.box_size * 3))
+            assert np.all(loc < self.box_size * 3)
+            assert np.all(loc > -self.box_size * 3)
 
             over = loc > self.box_size
             loc[over] = 2 * self.box_size - loc[over]
-            assert (np.all(loc <= self.box_size))
+            assert np.all(loc <= self.box_size)
 
             # assert(np.all(vel[over]>0))
             vel[over] = -np.abs(vel[over])
@@ -247,7 +299,7 @@ class ChargedParticlesSim(object):
             under = loc < -self.box_size
             loc[under] = -2 * self.box_size - loc[under]
             # assert (np.all(vel[under] < 0))
-            assert (np.all(loc >= -self.box_size))
+            assert np.all(loc >= -self.box_size)
             vel[under] = np.abs(vel[under])
 
             clamp[over[0, :]] = 1
@@ -255,12 +307,13 @@ class ChargedParticlesSim(object):
 
         return loc, vel, clamp
 
-    def sample_trajectory(self, T=10000, sample_freq=10,
-                          charge_prob=[1. / 2, 0, 1. / 2]):
+    def sample_trajectory(
+        self, T=10000, sample_freq=10, charge_prob=[1.0 / 2, 0, 1.0 / 2]
+    ):
         n = self.n_balls
 
         # T_save is number of (saved) measurements/observations
-        assert (T % sample_freq == 0)
+        assert T % sample_freq == 0
         T_save = int(T / sample_freq - 1)
         counter = 0  # count number of measurements
 
@@ -269,8 +322,9 @@ class ChargedParticlesSim(object):
         np.fill_diagonal(diag_mask, 0)
 
         # Sample charges and get edges
-        charges = np.random.choice(self._charge_types, size=(self.n_balls, 1),
-                                   p=charge_prob)
+        charges = np.random.choice(
+            self._charge_types, size=(self.n_balls, 1), p=charge_prob
+        )
         edges = charges.dot(charges.transpose())
 
         # Initialize location and velocity
@@ -279,7 +333,11 @@ class ChargedParticlesSim(object):
         clamp = np.zeros((T_save, n))
         loc_next = np.random.randn(self.dim, n) * self.loc_std
         vel_next = np.random.randn(self.dim, n)
-        clamp_next = np.zeros([n,])
+        clamp_next = np.zeros(
+            [
+                n,
+            ]
+        )
         v_norm = np.sqrt((vel_next ** 2).sum(axis=0)).reshape(1, -1)
         vel_next = vel_next * self.vel_norm / v_norm
         loc[0, :, :], vel[0, :, :], clamp[0, :] = self._clamp(loc_next, vel_next)
@@ -288,35 +346,50 @@ class ChargedParticlesSim(object):
         count_maxedout = 0
 
         # disables division by zero warning, since I fix it with fill_diagonal
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
             # half step leapfrog
             l2_dist_power3 = np.power(
-                self._l2(loc_next.transpose(), loc_next.transpose()), 3. / 2.)
+                self._l2(loc_next.transpose(), loc_next.transpose()), 3.0 / 2.0
+            )
 
             # size of forces up to a 1/|r| factor
             # since I later multiply by an unnormalized r vector
             forces_size = self.interaction_strength * edges / l2_dist_power3
-            np.fill_diagonal(forces_size,
-                             0)  # self forces are zero (fixes division by zero)
-            assert (np.abs(forces_size[diag_mask]).min() > 1e-10)
+            np.fill_diagonal(
+                forces_size, 0
+            )  # self forces are zero (fixes division by zero)
+            assert np.abs(forces_size[diag_mask]).min() > 1e-10
             if self.dim == 2:
-                F = (forces_size.reshape(1, n, n) *
-                     np.concatenate((
-                         np.subtract.outer(loc_next[0, :],
-                                           loc_next[0, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[1, :],
-                                           loc_next[1, :]).reshape(1, n, n)))).sum(
-                    axis=-1)
+                F = (
+                    forces_size.reshape(1, n, n)
+                    * np.concatenate(
+                        (
+                            np.subtract.outer(loc_next[0, :], loc_next[0, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[1, :], loc_next[1, :]).reshape(
+                                1, n, n
+                            ),
+                        )
+                    )
+                ).sum(axis=-1)
             elif self.dim == 3:
-                F = (forces_size.reshape(1, n, n) *
-                     np.concatenate((
-                         np.subtract.outer(loc_next[0, :],
-                                           loc_next[0, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[1, :],
-                                           loc_next[1, :]).reshape(1, n, n),
-                         np.subtract.outer(loc_next[2, :],
-                                           loc_next[2, :]).reshape(1, n, n)))).sum(
-                    axis=-1)
+                F = (
+                    forces_size.reshape(1, n, n)
+                    * np.concatenate(
+                        (
+                            np.subtract.outer(loc_next[0, :], loc_next[0, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[1, :], loc_next[1, :]).reshape(
+                                1, n, n
+                            ),
+                            np.subtract.outer(loc_next[2, :], loc_next[2, :]).reshape(
+                                1, n, n
+                            ),
+                        )
+                    )
+                ).sum(axis=-1)
             # cap maximum force strength
             count_maxedout += np.sum(F > self._max_F) + np.sum(F < -self._max_F)
             F[F > self._max_F] = self._max_F
@@ -332,41 +405,54 @@ class ChargedParticlesSim(object):
                 clamp_next[clamp_this_i == 1] = 1
 
                 if i % sample_freq == 0:
-                    loc[counter, :, :], vel[counter, :, :], clamp[counter, :] \
-                        = loc_next, vel_next, clamp_next
+                    loc[counter, :, :], vel[counter, :, :], clamp[counter, :] = (
+                        loc_next,
+                        vel_next,
+                        clamp_next,
+                    )
                     clamp_next *= 0
                     counter += 1
 
                 l2_dist_power3 = np.power(
-                    self._l2(loc_next.transpose(), loc_next.transpose()),
-                    3. / 2.)
+                    self._l2(loc_next.transpose(), loc_next.transpose()), 3.0 / 2.0
+                )
                 forces_size = self.interaction_strength * edges / l2_dist_power3
                 np.fill_diagonal(forces_size, 0)
                 # assert (np.abs(forces_size[diag_mask]).min() > 1e-10)
                 if self.dim == 2:
-                    F = (forces_size.reshape(1, n, n) *
-                         np.concatenate((
-                             np.subtract.outer(loc_next[0, :],
-                                               loc_next[0, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[1, :],
-                                               loc_next[1, :]).reshape(1, n,
-                                                                       n)))).sum(
-                        axis=-1)
+                    F = (
+                        forces_size.reshape(1, n, n)
+                        * np.concatenate(
+                            (
+                                np.subtract.outer(
+                                    loc_next[0, :], loc_next[0, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[1, :], loc_next[1, :]
+                                ).reshape(1, n, n),
+                            )
+                        )
+                    ).sum(axis=-1)
                 elif self.dim == 3:
-                    F = (forces_size.reshape(1, n, n) *
-                         np.concatenate((
-                             np.subtract.outer(loc_next[0, :],
-                                               loc_next[0, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[1, :],
-                                               loc_next[1, :]).reshape(1, n, n),
-                             np.subtract.outer(loc_next[2, :],
-                                               loc_next[2, :]).reshape(1, n,
-                                                                       n)))).sum(
-                        axis=-1)
+                    F = (
+                        forces_size.reshape(1, n, n)
+                        * np.concatenate(
+                            (
+                                np.subtract.outer(
+                                    loc_next[0, :], loc_next[0, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[1, :], loc_next[1, :]
+                                ).reshape(1, n, n),
+                                np.subtract.outer(
+                                    loc_next[2, :], loc_next[2, :]
+                                ).reshape(1, n, n),
+                            )
+                        )
+                    ).sum(axis=-1)
 
                 # cap maximum force strength
-                count_maxedout += np.sum(F > self._max_F) + np.sum(
-                    F < -self._max_F)
+                count_maxedout += np.sum(F > self._max_F) + np.sum(F < -self._max_F)
                 F[F > self._max_F] = self._max_F
                 F[F < -self._max_F] = -self._max_F
                 vel_next += self._delta_T * F
@@ -377,7 +463,7 @@ class ChargedParticlesSim(object):
             return loc, vel, edges, charges, clamp
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sim = SpringSim()
     # sim = ChargedParticlesSim()
 
@@ -389,13 +475,14 @@ if __name__ == '__main__':
     vel_norm = np.sqrt((vel ** 2).sum(axis=1))
     plt.figure()
     axes = plt.gca()
-    axes.set_xlim([-5., 5.])
-    axes.set_ylim([-5., 5.])
+    axes.set_xlim([-5.0, 5.0])
+    axes.set_ylim([-5.0, 5.0])
     for i in range(loc.shape[-1]):
         plt.plot(loc[:, 0, i], loc[:, 1, i])
-        plt.plot(loc[0, 0, i], loc[0, 1, i], 'd')
+        plt.plot(loc[0, 0, i], loc[0, 1, i], "d")
     plt.figure()
-    energies = [sim._energy(loc[i, :, :], vel[i, :, :], edges) for i in
-                range(loc.shape[0])]
+    energies = [
+        sim._energy(loc[i, :, :], vel[i, :, :], edges) for i in range(loc.shape[0])
+    ]
     plt.plot(energies)
     plt.show()
