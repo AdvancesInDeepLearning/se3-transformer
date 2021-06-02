@@ -5,24 +5,25 @@ import os
 import sys
 import warnings
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
+import datetime
+# import wandb
+import time
 
 import dgl
 import numpy as np
 import torch
-# import wandb
-import time
-import datetime
-
-from torch import optim
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from dataloader import RIDataset
-# from utils import utils_logging
-
 # import nbody_models as models
 # from equivariant_attention.from_se3cnn.SO3 import rot
 from nbody_flags import get_flags
+from torch import optim
+from torch.utils.data import DataLoader
+
+# from utils import utils_logging
+
 
 
 def to_np(x):
@@ -40,13 +41,13 @@ def get_acc(pred, x_T, v_T, y=None, verbose=True):
     if verbose:
         y = np.asarray(y.cpu())
         _sq = (pred - y) ** 2
-        acc_dict['mse'] = np.mean(_sq)
+        acc_dict["mse"] = np.mean(_sq)
 
     _sq = (pred[:, 0, :] - x_T) ** 2
-    acc_dict['pos_mse'] = np.mean(_sq)
+    acc_dict["pos_mse"] = np.mean(_sq)
 
     _sq = (pred[:, 1, :] - v_T) ** 2
-    acc_dict['vel_mse'] = np.mean(_sq)
+    acc_dict["vel_mse"] = np.mean(_sq)
 
     return acc_dict
 
@@ -56,7 +57,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
     loss_epoch = 0
 
     num_iters = len(dataloader)
-    wandb.log({"lr": optimizer.param_groups[0]['lr']}, commit=False)
+    wandb.log({"lr": optimizer.param_groups[0]["lr"]}, commit=False)
     for i, (g, y1, y2) in enumerate(dataloader):
         g = g.to(FLAGS.device)
         x_T = y1.to(FLAGS.device).view(-1, 3)
@@ -72,6 +73,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
 
         if torch.isnan(loss):
             import pdb
+
             pdb.set_trace()
 
         # backprop
@@ -80,8 +82,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
 
         # print to console
         if i % FLAGS.print_interval == 0:
-            print(
-                f"[{epoch}|{i}] loss: {loss:.5f}")
+            print(f"[{epoch}|{i}] loss: {loss:.5f}")
 
         # log to wandb
         if i % FLAGS.log_interval == 0:
@@ -103,7 +104,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
 def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
     model.eval()
 
-    keys = ['pos_mse', 'vel_mse']
+    keys = ["pos_mse", "vel_mse"]
     acc_epoch = {k: 0.0 for k in keys}
     acc_epoch_blc = {k: 0.0 for k in keys}  # for constant baseline
     acc_epoch_bll = {k: 0.0 for k in keys}  # for linear baseline
@@ -116,20 +117,20 @@ def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
 
         # run model forward and compute loss
         pred = model(g).detach()
-        loss_epoch += to_np(loss_fnc(pred, y)/len(dataloader))
+        loss_epoch += to_np(loss_fnc(pred, y) / len(dataloader))
         acc = get_acc(pred, x_T, v_T, y=y)
         for k in keys:
-            acc_epoch[k] += acc[k]/len(dataloader)
+            acc_epoch[k] += acc[k] / len(dataloader)
 
         # eval constant baseline
         bl_pred = torch.zeros_like(pred)
         acc = get_acc(bl_pred, x_T, v_T, verbose=False)
         for k in keys:
-            acc_epoch_blc[k] += acc[k]/len(dataloader)
+            acc_epoch_blc[k] += acc[k] / len(dataloader)
 
         # eval linear baseline
         # Apply linear update to locations.
-        bl_pred[:, 0, :] = dT * g.ndata['v'][:, 0, :]
+        bl_pred[:, 0, :] = dT * g.ndata["v"][:, 0, :]
         acc = get_acc(bl_pred, x_T, v_T, verbose=False)
         for k in keys:
             acc_epoch_bll[k] += acc[k] / len(dataloader)
@@ -138,9 +139,9 @@ def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
     wandb.log({"Test loss": loss_epoch}, commit=False)
     for k in keys:
         wandb.log({"Test " + k: acc_epoch[k]}, commit=False)
-    wandb.log({'Const. BL pos_mse': acc_epoch_blc['pos_mse']}, commit=False)
-    wandb.log({'Linear BL pos_mse': acc_epoch_bll['pos_mse']}, commit=False)
-    wandb.log({'Linear BL vel_mse': acc_epoch_bll['vel_mse']}, commit=False)
+    wandb.log({"Const. BL pos_mse": acc_epoch_blc["pos_mse"]}, commit=False)
+    wandb.log({"Linear BL pos_mse": acc_epoch_bll["pos_mse"]}, commit=False)
+    wandb.log({"Linear BL vel_mse": acc_epoch_bll["vel_mse"]}, commit=False)
 
 
 class RandomRotation(object):
@@ -161,17 +162,19 @@ def collate(samples):
 
 def main(FLAGS, UNPARSED_ARGV):
     # Prepare data
-    train_dataset = RIDataset(FLAGS, split='train')
-    train_loader = DataLoader(train_dataset,
-                              batch_size=FLAGS.batch_size,
-                              shuffle=True,
-                              collate_fn=collate,
-                              num_workers=FLAGS.num_workers,
-                              drop_last=True)
+    train_dataset = RIDataset(FLAGS, split="train")
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=FLAGS.batch_size,
+        shuffle=True,
+        collate_fn=collate,
+        num_workers=FLAGS.num_workers,
+        drop_last=True,
+    )
 
-    print('----------------------------------------')
-    print('dataloader works')
-    print('----------------------------------------')
+    print("----------------------------------------")
+    print("dataloader works")
+    print("----------------------------------------")
 
     # test_dataset = RIDataset(FLAGS, split='test')
     # # drop_last is only here so that we can count accuracy correctly;
@@ -225,7 +228,7 @@ def main(FLAGS, UNPARSED_ARGV):
     #     test_epoch(epoch, model, task_loss, test_loader, FLAGS, dT)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     FLAGS, UNPARSED_ARGV = get_flags()
     os.makedirs(FLAGS.save_dir, exist_ok=True)
@@ -238,6 +241,8 @@ if __name__ == '__main__':
     try:
         main(FLAGS, UNPARSED_ARGV)
     except Exception:
-        import pdb, traceback
+        import pdb
+        import traceback
+
         traceback.print_exc()
         pdb.post_mortem()

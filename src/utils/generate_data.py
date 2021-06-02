@@ -4,48 +4,51 @@ import json
 import os
 import pickle
 
-from absl import app
-from absl import flags
-from absl import logging
 import numpy as np
+import reading_utils
 import tensorflow.compat.v1 as tf
 import tree
-
-import reading_utils
-
-from matplotlib import pyplot as plt
+from absl import app, flags, logging
 from matplotlib import animation
+from matplotlib import pyplot as plt
+
 
 def _read_metadata(data_path):
-  with open(os.path.join(data_path, 'metadata.json'), 'rt') as fp:
-    return json.loads(fp.read())
+    with open(os.path.join(data_path, "metadata.json"), "rt") as fp:
+        return json.loads(fp.read())
+
 
 def prepare_rollout_inputs(context, features):
-  """Prepares an inputs trajectory for rollout."""
-  out_dict = {**context}
-  # Position is encoded as [sequence_length, num_particles, dim] but the model
-  # expects [num_particles, sequence_length, dim].
-  pos = tf.transpose(features['position'], [1, 0, 2])
-  # The target position is the final step of the stack of positions.
-  target_position = pos[:, -1]
-  # Remove the target from the input.
-  out_dict['position'] = pos[:, :-1]
-  # Compute the number of nodes
-  out_dict['n_particles_per_example'] = [tf.shape(pos)[0]]
-  if 'step_context' in features:
-    out_dict['step_context'] = features['step_context']
-  out_dict['is_trajectory'] = tf.constant([True], tf.bool)
-  return out_dict, target_position
+    """Prepares an inputs trajectory for rollout."""
+    out_dict = {**context}
+    # Position is encoded as [sequence_length, num_particles, dim] but the model
+    # expects [num_particles, sequence_length, dim].
+    pos = tf.transpose(features["position"], [1, 0, 2])
+    # The target position is the final step of the stack of positions.
+    target_position = pos[:, -1]
+    # Remove the target from the input.
+    out_dict["position"] = pos[:, :-1]
+    # Compute the number of nodes
+    out_dict["n_particles_per_example"] = [tf.shape(pos)[0]]
+    if "step_context" in features:
+        out_dict["step_context"] = features["step_context"]
+    out_dict["is_trajectory"] = tf.constant([True], tf.bool)
+    return out_dict, target_position
 
-data_path = '/Users/bigdraw/tmp/datasets/WaterRamps'
+
+data_path = "/Users/bigdraw/tmp/datasets/WaterRamps"
 batch_size = 1
-mode = 'rollout'
-split = 'valid'
+mode = "rollout"
+split = "valid"
 
 metadata = _read_metadata(data_path)
 # Create a tf.data.Dataset from the TFRecord.
-ds = tf.data.TFRecordDataset([os.path.join(data_path, f'{split}.tfrecord')])
-ds = ds.map(functools.partial(reading_utils.parse_serialized_simulation_example, metadata=metadata))
+ds = tf.data.TFRecordDataset([os.path.join(data_path, f"{split}.tfrecord")])
+ds = ds.map(
+    functools.partial(
+        reading_utils.parse_serialized_simulation_example, metadata=metadata
+    )
+)
 
 
 assert batch_size == 1
@@ -63,8 +66,8 @@ with tf.Session() as sess:
     try:
         while True:
             sth = sess.run(one_element)
-            p_type_lst.append(sth[0]['particle_type'])
-            examples.append(sth[0]['position'])
+            p_type_lst.append(sth[0]["particle_type"])
+            examples.append(sth[0]["position"])
             num = num + len(sth[1])
     except tf.errors.OutOfRangeError:
         print("end!")
@@ -88,13 +91,13 @@ vel_data = np.array(vel_data)
 points_data = []
 for i in range(len(examples)):
     rotate = np.swapaxes(examples[i][0:min_step], 0, 1)
-    points_data.append(rotate[:rotate.shape[0]-1])
+    points_data.append(rotate[: rotate.shape[0] - 1])
 points_data = np.array(points_data)
 
 data = {}
-data['points'] = points_data
-data['vel'] = vel_data
+data["points"] = points_data
+data["vel"] = vel_data
 
 # save the data as a pkl file
-with open('sample_data.pkl', "wb") as file:
+with open("sample_data.pkl", "wb") as file:
     pickle.dump(data, file)
