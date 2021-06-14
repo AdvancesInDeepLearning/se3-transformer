@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+from numpy.lib.function_base import select
+
 
 class SpringSim(object):
     def __init__(self, n_balls=5, box_size=5., loc_std=.5, vel_norm=.5,
@@ -382,15 +384,24 @@ class ChargedParticlesSim(object):
 class ArgonSim(object):
     def __init__(self, n_balls=28, box_size=5., loc_std=1., vel_norm=0.5,
                  interaction_strength=1., noise_var=0.,
-                 dim = 2):
-        self.n_balls = n_balls
-        self.box_size = box_size
+                 dim = 3, temperature=1.0, density=0.8):
+        # THREE CASES THAT ARE EASY to use:
+        # DENSITY 1.2, TEMP 0.5: SOLID
+        # DENSITY 0.8, TEMP 1.0: LIQUID
+        # DENSITY 0.3, TEMP 3.0: GAS
+        # self.n_balls = n_balls
+        # self.box_size = box_size
         self.loc_std = loc_std
         self.vel_norm = vel_norm
         self.interaction_strength = interaction_strength # 
         self.noise_var = noise_var # noise that can be added to the observations
-        self.box_size = 100
+        # self.box_size = 100
         self.dim = dim
+        self.number_of_cells = 2
+        self.density = 0.8
+        self.init_pos = InitializeFCC(self.number_of_cells, self.density)
+        self.box_size = self.init_pos.get_boxsize()
+        self.n_balls = self.init_pos.get_n_particles()
 
         self.sigma = 1.0 # natural constant 
         self.kb = 1.0 # natural constant
@@ -499,25 +510,25 @@ class ArgonSim(object):
             elastically colliding with walls
         '''
         clamp = np.zeros([loc.shape[1]])
-        if self.box_size > 1e-6:
-            assert (np.all(loc < self.box_size * 3))
-            assert (np.all(loc > -self.box_size * 3))
+        # if self.box_size > 1e-6:
+        #     assert (np.all(loc < self.box_size * 3))
+        #     assert (np.all(loc > -self.box_size * 3))
 
-            over = loc > self.box_size
-            loc[over] = 2 * self.box_size - loc[over]
-            assert (np.all(loc <= self.box_size))
+        #     over = loc > self.box_size
+        #     loc[over] = 2 * self.box_size - loc[over]
+        #     assert (np.all(loc <= self.box_size))
 
-            # assert(np.all(vel[over]>0))
-            vel[over] = -np.abs(vel[over])
+        #     # assert(np.all(vel[over]>0))
+        #     vel[over] = -np.abs(vel[over])
 
-            under = loc < -self.box_size
-            loc[under] = -2 * self.box_size - loc[under]
-            # assert (np.all(vel[under] < 0))
-            assert (np.all(loc >= -self.box_size))
-            vel[under] = np.abs(vel[under])
+        #     under = loc < -self.box_size
+        #     loc[under] = -2 * self.box_size - loc[under]
+        #     # assert (np.all(vel[under] < 0))
+        #     assert (np.all(loc >= -self.box_size))
+        #     vel[under] = np.abs(vel[under])
 
-            clamp[over[0, :]] = 1
-            clamp[under[0, :]] = 1
+        #     clamp[over[0, :]] = 1
+        #     clamp[under[0, :]] = 1
 
         return loc, vel, clamp
 
@@ -535,26 +546,26 @@ class ArgonSim(object):
         np.fill_diagonal(diag_mask, 0)
 
         # Sample charges and get edges
-        charges = np.random.choice(self._charge_types, size=(self.n_balls, 1),
-                                   p=charge_prob)
+        charges = np.ones((self.n_balls, 1))
         edges = charges.dot(charges.transpose())
 
         # Initialize location and velocity
         loc = np.zeros((T_save, self.dim, n))
         vel = np.zeros((T_save, self.dim, n))
         clamp = np.zeros((T_save, n))
-        loc_next = np.random.randn(self.dim, n) * self.loc_std # implement FCC lattice here
+        # loc_next = np.random.randn(self.dim, n) * self.loc_std # implement FCC lattice here
+        loc_next = self.init_pos()
         vel_next = np.random.randn(self.dim, n) # implement boltzmann velocity profile here ? Maybe not needed if we use Rescaling.
         clamp_next = np.zeros([n,])
         v_norm = np.sqrt((vel_next ** 2).sum(axis=0)).reshape(1, -1)
         vel_next = vel_next * self.vel_norm / v_norm
+        # print("before clamp: ", loc_next[0])
         loc[0, :, :], vel[0, :, :], clamp[0, :] = self._clamp(loc_next, vel_next)
-
         # count number of times forces were capped
         count_maxedout = 0
-
         # disables division by zero warning, since I fix it with fill_diagonal
-        with np.errstate(divide='ignore'):
+        # with np.errstate(divide='ignore'):
+        if True:
             # half step leapfrog
             #
             ## FORCE COMPUTATION:
@@ -595,16 +606,20 @@ class ArgonSim(object):
             # run leapfrog
             for i in range(1, T):
                 loc_next += self._delta_T * vel_next
-                # loc_next, vel_next, clamp_this_i = self._clamp(loc_next, vel_next)
+                loc_next, vel_next, clamp_this_i = self._clamp(loc_next, vel_next)
 
                 # # Update clamping.
                 # clamp_next[clamp_this_i == 1] = 1
 
-                # if i % sample_freq == 0:
-                #     loc[counter, :, :], vel[counter, :, :], clamp[counter, :] \
-                #         = loc_next, vel_next, clamp_next
-                #     clamp_next *= 0
-                #     counter += 1
+                if i % sample_freq == 0:
+                    loc[counter, :, :], vel[counter, :, :], clamp[counter, :] \
+                        = loc_next, vel_next, clamp_next
+                    clamp_next *= 0
+                    # plt.figure()
+                    # plt.scatter(loc[counter, 0, :], loc[counter, 1, :])
+                    # plt.show()
+                    # plt.close()
+                    counter += 1
                 ## FORCE COMPUTATION
                 F = self.get_force(loc_next)
                 # l2_dist = self._l2(loc_next.transpose(), loc_next.transpose())
@@ -637,15 +652,10 @@ class ArgonSim(object):
                 #     F < -self._max_F)
                 # F[F > self._max_F] = self._max_F
                 # F[F < -self._max_F] = -self._max_F
-                vel_next += self._delta_T * F
-                # if i%100==0:
-                #     plt.figure()
-                #     plt.scatter(loc[counter, 0, :], loc[counter, 0, :])
-                #     plt.show()
-                #     plt.close()
+                vel_next += self._delta_T * F                    
             # Add noise to observations
-            loc += np.random.randn(T_save, self.dim, self.n_balls) * self.noise_var
-            vel += np.random.randn(T_save, self.dim, self.n_balls) * self.noise_var
+            # loc += np.random.randn(T_save, self.dim, self.n_balls) * self.noise_var
+            # vel += np.random.randn(T_save, self.dim, self.n_balls) * self.noise_var
             # print(count_maxedout)
             return loc, vel, edges, charges, clamp
 
@@ -672,3 +682,49 @@ if __name__ == '__main__':
                 range(loc.shape[0])]
     plt.plot(energies)
     plt.show()
+
+
+class InitializeFCC():
+    def __init__(self, number_of_cells, density, noise_level=0.1):
+        """Create a fcc lattice for some number of unit cells
+        An fcc lattice with period 1 in periodic boundary conditions has 4 points:
+        # fcc (0,0,0), (0.5, 0.5, 0), (0.5, 0.0, 0.5), (0.0, 0.5, 0.5)
+        Args:
+            number_of_cells (int): The number of unit cells to use per (x,y,z), so total number of cells is number_of_cells**3
+            density (float): The density of the system, determines the box size
+        """
+        self.number_of_cells = number_of_cells
+        self.density = density
+        self.n_unit_cell = 4
+        self.name = "fcc"
+        self.n_particles = self.n_unit_cell * self.number_of_cells ** 3
+        self.boxsize = np.cbrt(self.n_particles / self.density)
+        print("The size of the box is: {}".format(self.boxsize))
+        self.noise_level = noise_level
+
+    def get_n_particles(self):
+        return self.n_particles
+    
+    def get_boxsize(self):
+        return self.boxsize
+
+    def __call__(self):
+        """Generate a Face Centered Cubic lattice.
+
+        Returns:
+            (np.array, int, float): The positions, the number of particles and the edge size of the box
+        """
+          # cubic root of N/density
+        init_pos = []
+        fcc_offset = 0.5 * self.boxsize / self.number_of_cells
+        for x in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
+            for y in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
+                for z in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
+                    init_pos.append([x, y, z])
+                    init_pos.append([x + fcc_offset, y + fcc_offset, z])
+                    init_pos.append([x + fcc_offset, y, z + fcc_offset])
+                    init_pos.append([x, y + fcc_offset, z + fcc_offset])
+        new_arr = np.array(init_pos).T
+        # add a little bit of noise to the initial conditions to ensure no two samples are the same
+        new_arr += np.random.uniform(-self.noise_level, self.noise_level, size=(new_arr.shape))
+        return new_arr
