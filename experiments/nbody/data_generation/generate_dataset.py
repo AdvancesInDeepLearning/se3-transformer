@@ -1,4 +1,4 @@
-from synthetic_sim import ChargedParticlesSim, SpringSim
+from synthetic_sim import ChargedParticlesSim, SpringSim, ArgonSim
 import time
 import numpy as np
 import argparse
@@ -47,6 +47,12 @@ elif args.simulation == 'charged':
                               box_size=args.boxsize,
                               dim=args.dim)
     suffix = '_charged_' + str(args.dim) + 'D_'
+elif args.simulation == 'argon':
+    sim = ArgonSim(noise_var=0.0,
+                              n_balls=args.n_balls,
+                              box_size=args.boxsize,
+                              dim=args.dim)
+    suffix = '_argon_' + str(args.dim) + 'D_'
 else:
     raise ValueError('Simulation {} not implemented'.format(args.simulation))
 
@@ -78,6 +84,9 @@ def generate_dataset(num_sims, length, sample_freq):
             loc, vel, edges, clamp = sim.sample_trajectory(
                 T=length, sample_freq=sample_freq)
         elif args.simulation == 'charged':
+            loc, vel, edges, charges, clamp = sim.sample_trajectory(
+                T=length, sample_freq=sample_freq)
+        elif args.simulation == 'argon':
             loc, vel, edges, charges, clamp = sim.sample_trajectory(
                 T=length, sample_freq=sample_freq)
 
