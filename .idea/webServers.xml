@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="3ed6755c-d1cb-4352-b938-a2aa6a2264b0" name="ADL @ U0032495" url="http:///">
+        <fileTransfer accessType="SFTP" host="cslab-ssh-u0032495" port="22" sshConfigId="3ebfbc4b-1af0-4d3e-b43b-23a5b8a6467e" sshConfig="s2423286@cslab-ssh-u0032495:22 agent" authAgent="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
