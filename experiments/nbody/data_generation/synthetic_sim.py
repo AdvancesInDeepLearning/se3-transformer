@@ -384,7 +384,7 @@ class ChargedParticlesSim(object):
 class ArgonSim(object):
     def __init__(self, n_balls=28, box_size=5., loc_std=1., vel_norm=0.5,
                  interaction_strength=1., noise_var=0.,
-                 dim = 3, temperature=1.0, density=0.8):
+                 dim = 3, temperature=1.0, density=0.8, mass=1.0):
         # THREE CASES THAT ARE EASY to use:
         # DENSITY 1.2, TEMP 0.5: SOLID
         # DENSITY 0.8, TEMP 1.0: LIQUID
@@ -402,9 +402,12 @@ class ArgonSim(object):
         self.init_pos = InitializeFCC(self.number_of_cells, self.density)
         self.box_size = self.init_pos.get_boxsize()
         self.n_balls = self.init_pos.get_n_particles()
-
+        self.T_rescale = 500
+        self.temperature = temperature
+        self.density = density
+        self.mass = mass
         self.sigma = 1.0 # natural constant 
-        self.kb = 1.0 # natural constant
+        self.k_b = 1.0 # natural constant
         self.epsilon_kb = 1.-0 # another natural constant
         self.eps = 1e-6 # smoothing factor to avoid NaNs.
         self._charge_types = np.array([1])
@@ -530,7 +533,26 @@ class ArgonSim(object):
         #     clamp[over[0, :]] = 1
         #     clamp[under[0, :]] = 1
 
-        return loc, vel, clamp
+        return (loc%self.box_size), vel, clamp
+
+    def rescale(self, velocities):
+        """Rescale the velocity to match a physical Boltzmann initialization.
+
+        Args:
+            velocities (np.array): array with the velocities that need to be rescaled shape n_particles x n_dimensions
+
+        Returns:
+            (np.array): the rescaled velocities
+        """
+        lam = np.sqrt(
+            3.0
+            * (self.n_balls - 1)
+            * self.k_b
+            * self.temperature
+            / self.mass
+            / np.sum(velocities ** 2)  # sum over all particles and dimensions
+        )
+        return lam * velocities
 
     def sample_trajectory(self, T=10000, sample_freq=10,
                           charge_prob=[1.]):
@@ -603,9 +625,16 @@ class ArgonSim(object):
             # F[F < -self._max_F] = -self._max_F
 
             vel_next += self._delta_T * F
+            # Perform energy rescaling (1000 steps is plenty:)
+            for i in range(1, self.T_rescale):
+                vel_next = self.rescale(vel_next)
+                loc_next += self._delta_T * vel_next
+                loc_next, vel_next, clamp_this_i = self._clamp(loc_next, vel_next)
+                F = self.get_force(loc_next)
+                vel_next += self._delta_T * F  
             # run leapfrog
             for i in range(1, T):
-                loc_next += self._delta_T * vel_next
+                loc_next += self._delta_T * vel_next 
                 loc_next, vel_next, clamp_this_i = self._clamp(loc_next, vel_next)
 
                 # # Update clamping.
