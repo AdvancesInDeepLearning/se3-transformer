@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import warnings
+import time
 
 from utils.utils_profiling import *  # load before other local modules
 
@@ -56,6 +57,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
 
     num_iters = len(dataloader)
     wandb.log({"lr": optimizer.param_groups[0]["lr"]}, commit=False)
+    s = time.time()
     for i, (g, y1, y2) in enumerate(dataloader):
         g = g.to(FLAGS.device)
         x_T = y1.to(FLAGS.device).view(-1, 3)
@@ -97,7 +99,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
     # log train accuracy for entire epoch to wandb
     loss_epoch /= len(dataloader)
     wandb.log({"Train Epoch Loss": loss_epoch}, commit=False)
-
+    print(f"Epoch done after {np.around((time.time()-s), 2)}s")
 
 def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
     model.eval()
