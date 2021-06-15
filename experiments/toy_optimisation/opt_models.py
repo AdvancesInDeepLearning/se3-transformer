@@ -8,16 +8,30 @@ from dgl import function as fn
 from torch import nn
 
 from equivariant_attention.fibers import Fiber
-from equivariant_attention.modules import get_basis_and_r, GSE3Res, GNormBias, get_r
-from experiments.toy_optimisation.opt_potential import potential_gradient, update_potential_values
+from equivariant_attention.modules import (GNormBias, GSE3Res, get_basis_and_r,
+                                           get_r)
+from experiments.toy_optimisation.opt_potential import (
+    potential_gradient, update_potential_values)
 from utils.utils_data import copy_dgl_graph, update_relative_positions
 
 
 class SE3TransformerIterative(nn.Module):
-    def __init__(self, *, num_layers: int, num_degrees: int = 4, num_channels: int,
-                 div: float = 4, n_heads: int = 1, num_iter: int = 3,
-                 si_m='1x1', si_e='1x1', x_ij=None,
-                 compute_gradients=True, k_neighbors=None, **kwargs):
+    def __init__(
+        self,
+        *,
+        num_layers: int,
+        num_degrees: int = 4,
+        num_channels: int,
+        div: float = 4,
+        n_heads: int = 1,
+        num_iter: int = 3,
+        si_m="1x1",
+        si_e="1x1",
+        x_ij=None,
+        compute_gradients=True,
+        k_neighbors=None,
+        **kwargs,
+    ):
         """Iterative SE(3) equivariant GCN with attention
 
         Args:
@@ -49,33 +63,50 @@ class SE3TransformerIterative(nn.Module):
         self.k_neighbors = k_neighbors
 
         self.edge_dim = 1
-        self.fibers = {'in': Fiber(dictionary={0: 1}),
-                       'mid': Fiber(self.num_degrees, self.num_channels),
-                       'out': Fiber(dictionary={1: 1})}
+        self.fibers = {
+            "in": Fiber(dictionary={0: 1}),
+            "mid": Fiber(self.num_degrees, self.num_channels),
+            "out": Fiber(dictionary={1: 1}),
+        }
 
         self._graph_attention_common_params = {
-            'edge_dim': self.edge_dim,
-            'learnable_skip': True,
-            'skip': 'cat',
-            'x_ij': self.x_ij
+            "edge_dim": self.edge_dim,
+            "learnable_skip": True,
+            "skip": "cat",
+            "x_ij": self.x_ij,
         }
 
         self.blocks = self._build_gcn(self.fibers)
 
     def _input_layer(self):
-        return GSE3Res(self.fibers['in'], self.fibers['mid'],
-                       div=self.div, n_heads=self.n_heads, selfint=self.si_m,
-                       **self._graph_attention_common_params)
+        return GSE3Res(
+            self.fibers["in"],
+            self.fibers["mid"],
+            div=self.div,
+            n_heads=self.n_heads,
+            selfint=self.si_m,
+            **self._graph_attention_common_params,
+        )
 
     def _middle_layer(self):
-        return GSE3Res(self.fibers['mid'], self.fibers['mid'],
-                       div=self.div, n_heads=self.n_heads, selfint=self.si_m,
-                       **self._graph_attention_common_params)
+        return GSE3Res(
+            self.fibers["mid"],
+            self.fibers["mid"],
+            div=self.div,
+            n_heads=self.n_heads,
+            selfint=self.si_m,
+            **self._graph_attention_common_params,
+        )
 
     def _output_layer(self):
-        return GSE3Res(self.fibers['mid'], self.fibers['out'],
-                       div=1, n_heads=min(self.n_heads, 2), selfint=self.si_e,
-                       **self._graph_attention_common_params)
+        return GSE3Res(
+            self.fibers["mid"],
+            self.fibers["out"],
+            div=1,
+            n_heads=min(self.n_heads, 2),
+            selfint=self.si_e,
+            **self._graph_attention_common_params,
+        )
 
     def _build_gcn(self, fibers):
         outer_block = []
@@ -89,7 +120,7 @@ class SE3TransformerIterative(nn.Module):
                 else:
                     inner_block.append(self._middle_layer())
                 # Non-linearity between layers
-                inner_block.append(GNormBias(fibers['mid']))
+                inner_block.append(GNormBias(fibers["mid"]))
 
             if i == self.num_iter - 1:
                 inner_block.append(self._output_layer())
@@ -103,11 +134,11 @@ class SE3TransformerIterative(nn.Module):
 
         # We need to keep a copy of the initial position of all nodes in order to calculate the overall change in
         # position between the input and the output. This information is used for logging purposes.
-        original_x = torch.clone(G.ndata['x'])
+        original_x = torch.clone(G.ndata["x"])
 
         # 'features' are the node inputs to every layer; this dataset comes with edge features but without node features
         # hence, in the first layer, we need dummy node features; we choose this to be a single [1] for each node
-        features = {'0': G.ndata['ones']}
+        features = {"0": G.ndata["ones"]}
 
         for j, inner_block in enumerate(self.blocks):
             if save_steps:
@@ -115,13 +146,18 @@ class SE3TransformerIterative(nn.Module):
 
             num_nodes = _get_number_of_nodes_per_batch_element(G)
             if self.k_neighbors is not None and self.k_neighbors < num_nodes:
-                network_input_graph = copy_without_weak_connections(G, K=self.k_neighbors)
+                network_input_graph = copy_without_weak_connections(
+                    G, K=self.k_neighbors
+                )
             else:
                 network_input_graph = G
 
             # Compute equivariant weight basis for the current graph
-            basis, r = get_basis_and_r(network_input_graph, self.num_degrees - 1,
-                                       compute_gradients=self.compute_gradients)
+            basis, r = get_basis_and_r(
+                network_input_graph,
+                self.num_degrees - 1,
+                compute_gradients=self.compute_gradients,
+            )
 
             if torch.min(r) < 1e-5:
                 warnings.warn("Minimum separation between nodes fell below 1e-5")
@@ -130,18 +166,22 @@ class SE3TransformerIterative(nn.Module):
                 features = layer(features, G=network_input_graph, r=r, basis=basis)
 
             # We arbitrarily use the first type-1 feature for the position updates.
-            position_updates = features['1'][:, 0:1, :]
-            G.ndata['x'] = G.ndata['x'] + position_updates
+            position_updates = features["1"][:, 0:1, :]
+            G.ndata["x"] = G.ndata["x"] + position_updates
 
             update_relative_positions(G)
             update_potential_values(G)
 
             # Track the updates at each iteration and store on the graph for logging.
-            G.ndata[f'update_norm_{j}'] = torch.sqrt(torch.sum(position_updates**2, -1, keepdim=True))
+            G.ndata[f"update_norm_{j}"] = torch.sqrt(
+                torch.sum(position_updates ** 2, -1, keepdim=True)
+            )
 
         # Calculate the overall update and store on the graph for logging.
-        overall_update = G.ndata['x'] - original_x
-        G.ndata['update_norm'] = torch.sqrt(torch.sum(overall_update**2, -1, keepdim=True))
+        overall_update = G.ndata["x"] - original_x
+        G.ndata["update_norm"] = torch.sqrt(
+            torch.sum(overall_update ** 2, -1, keepdim=True)
+        )
 
         if save_steps:
             G_steps.append(copy_dgl_graph(G))
@@ -170,8 +210,8 @@ class GradientDescent:
         G_steps = []
         num_steps = 0
 
-        params = G.edata['potential_parameters']
-        initial_x = torch.clone(G.ndata['x'])
+        params = G.edata["potential_parameters"]
+        initial_x = torch.clone(G.ndata["x"])
         initial_x.requires_grad_()
 
         converged = False
@@ -179,7 +219,7 @@ class GradientDescent:
         for i in range(self.STEPS_LIMIT):
             num_steps += 1
             update_relative_positions(G)
-            G.edata['r'] = get_r(G)
+            G.edata["r"] = get_r(G)
 
             if inside_loop_callback is not None:
                 inside_loop_callback(G)
@@ -188,15 +228,17 @@ class GradientDescent:
                 update_potential_values(G)  # only needed if save_steps==True
                 G_steps.append(copy_dgl_graph(G))
 
-            update_direction = G.edata['d'] / torch.norm(G.edata['d'], dim=2, keepdim=True)
-            update_size = -potential_gradient(G.edata['r'], params) * self._step_size
+            update_direction = G.edata["d"] / torch.norm(
+                G.edata["d"], dim=2, keepdim=True
+            )
+            update_size = -potential_gradient(G.edata["r"], params) * self._step_size
             update_size = torch.clamp(update_size, -0.1, 0.1)
 
-            G.edata['update'] = update_size * update_direction
-            G.update_all(fn.copy_e('update', 'message'), fn.sum('message', 'update'))
-            G.ndata['x'] = G.ndata['x'] + G.ndata['update']
+            G.edata["update"] = update_size * update_direction
+            G.update_all(fn.copy_e("update", "message"), fn.sum("message", "update"))
+            G.ndata["x"] = G.ndata["x"] + G.ndata["update"]
 
-            update_norms = torch.norm(G.ndata['update'], dim=2)
+            update_norms = torch.norm(G.ndata["update"], dim=2)
             max_update_norm = torch.max(update_norms)
 
             if max_update_norm < (self._convergence_tolerance * self._step_size):
@@ -208,8 +250,10 @@ class GradientDescent:
         if not converged:
             print("Gradient Descent failed to converge after 5000 steps.")
 
-        overall_update = G.ndata['x'] - initial_x
-        G.ndata['update_norm'] = torch.sqrt(torch.sum(overall_update**2, -1, keepdim=True))
+        overall_update = G.ndata["x"] - initial_x
+        G.ndata["update_norm"] = torch.sqrt(
+            torch.sum(overall_update ** 2, -1, keepdim=True)
+        )
 
         update_potential_values(G)  # compute regardless of save_steps
 
@@ -238,15 +282,15 @@ def copy_without_weak_connections(G, K):
     """
     B = G.batch_size
     N = _get_number_of_nodes_per_batch_element(G)
-    w = G.edata['w']
+    w = G.edata["w"]
     src, dst = G.all_edges()
     src = src.to(device=w.device)
     dst = dst.to(device=w.device)
 
     # src, dst and w are all sorted by Batch, dst_node_id, src_node_id
-    w = w.view(B * N, (N-1))  # [batch * dst, src]
-    dst = dst.view(B * N, (N-1))
-    src = src.view(B * N, (N-1))
+    w = w.view(B * N, (N - 1))  # [batch * dst, src]
+    dst = dst.view(B * N, (N - 1))
+    src = src.view(B * N, (N - 1))
 
     # sorting
     w, indices = torch.sort(w, descending=True)
@@ -265,8 +309,8 @@ def copy_without_weak_connections(G, K):
 
     # create new graph with less edges and fill with data
     G2 = dgl.DGLGraph((src, dst))
-    G2.edata['w'] = w
-    G2.ndata['x'] = G.ndata['x']
+    G2.edata["w"] = w
+    G2.ndata["x"] = G.ndata["x"]
     update_relative_positions(G2)
 
     return G2

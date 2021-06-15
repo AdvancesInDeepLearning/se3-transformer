@@ -1,8 +1,9 @@
 import torch
+from torch import nn
+
 from equivariant_attention.fibers import Fiber
 from equivariant_attention.modules import (GConvSE3, GNormBias, GSE3Res,
                                            get_basis_and_r)
-from torch import nn
 
 
 class SE3Transformer(nn.Module):

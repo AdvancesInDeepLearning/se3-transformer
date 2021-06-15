@@ -1,8 +1,8 @@
 import argparse
 import os
 import sys
-import warnings
 import time
+import warnings
 
 from utils.utils_profiling import *  # load before other local modules
 
@@ -16,12 +16,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import wandb
+from torch import optim
+from torch.utils.data import DataLoader
+
 from equivariant_attention.from_se3cnn.SO3 import rot
 from experiments.nbody import nbody_models as models
 from experiments.nbody.nbody_dataloader import RIDataset
 from experiments.nbody.nbody_flags import get_flags
-from torch import optim
-from torch.utils.data import DataLoader
 from utils import utils_logging
 
 
@@ -100,6 +101,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, schedul, FLAGS):
     loss_epoch /= len(dataloader)
     wandb.log({"Train Epoch Loss": loss_epoch}, commit=False)
     print(f"Epoch done after {np.around((time.time()-s), 2)}s")
+
 
 def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
     model.eval()

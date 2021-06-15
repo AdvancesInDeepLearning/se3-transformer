@@ -1,7 +1,6 @@
 import dgl
 import numpy as np
 import torch
-
 from torch import FloatTensor
 from torch.utils.data import Dataset
 
@@ -68,22 +67,30 @@ class OptDataset(Dataset):
     @staticmethod
     def _get_random_coordinates(n_points):
         loc_std = 0.5
-        random_coordinates = torch.randn(size=(n_points, 3), dtype=DTYPE_TORCH) * loc_std
+        random_coordinates = (
+            torch.randn(size=(n_points, 3), dtype=DTYPE_TORCH) * loc_std
+        )
         return torch.unsqueeze(random_coordinates, dim=1)  # Must have shape [N, 1, 3]
 
     # noinspection PyTypeChecker
     def __getitem__(self, idx):
-        if self.split == 'log':
+        if self.split == "log":
             torch.manual_seed(idx)
 
         x = self._get_random_coordinates(self.n_points)
-        indices_src, indices_dst, potential_parameters = self._generate_graph_edges_with_parameters()
+        (
+            indices_src,
+            indices_dst,
+            potential_parameters,
+        ) = self._generate_graph_edges_with_parameters()
 
         G = dgl.DGLGraph((indices_src, indices_dst))
 
-        G.ndata['x'] = x
-        G.ndata['ones'] = torch.ones(size=[self.n_points, 1, 1], dtype=DTYPE_TORCH)  # used as dummy input for network
-        G.edata['potential_parameters'] = potential_parameters
+        G.ndata["x"] = x
+        G.ndata["ones"] = torch.ones(
+            size=[self.n_points, 1, 1], dtype=DTYPE_TORCH
+        )  # used as dummy input for network
+        G.edata["potential_parameters"] = potential_parameters
 
         update_relative_positions(G)
         update_potential_values(G)

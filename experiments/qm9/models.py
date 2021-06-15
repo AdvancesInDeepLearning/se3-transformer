@@ -1,34 +1,44 @@
 import sys
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
-
 from dgl.nn.pytorch import GraphConv, NNConv
 from torch import nn
 from torch.nn import functional as F
-from typing import Dict, Tuple, List
 
-from equivariant_attention.modules import GConvSE3, GNormSE3, get_basis_and_r, GSE3Res, GMaxPooling, GAvgPooling
 from equivariant_attention.fibers import Fiber
+from equivariant_attention.modules import (GAvgPooling, GConvSE3, GMaxPooling,
+                                           GNormSE3, GSE3Res, get_basis_and_r)
 
 
 class TFN(nn.Module):
     """SE(3) equivariant GCN"""
-    def __init__(self, num_layers: int, atom_feature_size: int, 
-                 num_channels: int, num_nlayers: int=1, num_degrees: int=4, 
-                 edge_dim: int=4, **kwargs):
+
+    def __init__(
+        self,
+        num_layers: int,
+        atom_feature_size: int,
+        num_channels: int,
+        num_nlayers: int = 1,
+        num_degrees: int = 4,
+        edge_dim: int = 4,
+        **kwargs
+    ):
         super().__init__()
         # Build the network
         self.num_layers = num_layers
         self.num_nlayers = num_nlayers
         self.num_channels = num_channels
         self.num_degrees = num_degrees
-        self.num_channels_out = num_channels*num_degrees
+        self.num_channels_out = num_channels * num_degrees
         self.edge_dim = edge_dim
 
-        self.fibers = {'in': Fiber(1, atom_feature_size),
-                       'mid': Fiber(num_degrees, self.num_channels),
-                       'out': Fiber(1, self.num_channels_out)}
+        self.fibers = {
+            "in": Fiber(1, atom_feature_size),
+            "mid": Fiber(num_degrees, self.num_channels),
+            "out": Fiber(1, self.num_channels_out),
+        }
 
         blocks = self._build_gcn(self.fibers, 1)
         self.block0, self.block1, self.block2 = blocks
@@ -39,12 +49,23 @@ class TFN(nn.Module):
     def _build_gcn(self, fibers, out_dim):
 
         block0 = []
-        fin = fibers['in']
-        for i in range(self.num_layers-1):
-            block0.append(GConvSE3(fin, fibers['mid'], self_interaction=True, edge_dim=self.edge_dim))
-            block0.append(GNormSE3(fibers['mid'], num_layers=self.num_nlayers))
-            fin = fibers['mid']
-        block0.append(GConvSE3(fibers['mid'], fibers['out'], self_interaction=True, edge_dim=self.edge_dim))
+        fin = fibers["in"]
+        for i in range(self.num_layers - 1):
+            block0.append(
+                GConvSE3(
+                    fin, fibers["mid"], self_interaction=True, edge_dim=self.edge_dim
+                )
+            )
+            block0.append(GNormSE3(fibers["mid"], num_layers=self.num_nlayers))
+            fin = fibers["mid"]
+        block0.append(
+            GConvSE3(
+                fibers["mid"],
+                fibers["out"],
+                self_interaction=True,
+                edge_dim=self.edge_dim,
+            )
+        )
 
         block1 = [GMaxPooling()]
 
@@ -57,10 +78,10 @@ class TFN(nn.Module):
 
     def forward(self, G):
         # Compute equivariant weight basis from relative positions
-        basis, r = get_basis_and_r(G, self.num_degrees-1)
+        basis, r = get_basis_and_r(G, self.num_degrees - 1)
 
         # encoder (equivariant layers)
-        h = {'0': G.ndata['f']}
+        h = {"0": G.ndata["f"]}
         for layer in self.block0:
             h = layer(h, G=G, r=r, basis=basis)
 
@@ -75,9 +96,20 @@ class TFN(nn.Module):
 
 class SE3Transformer(nn.Module):
     """SE(3) equivariant GCN with attention"""
-    def __init__(self, num_layers: int, atom_feature_size: int, 
-                 num_channels: int, num_nlayers: int=1, num_degrees: int=4, 
-                 edge_dim: int=4, div: float=4, pooling: str='avg', n_heads: int=1, **kwargs):
+
+    def __init__(
+        self,
+        num_layers: int,
+        atom_feature_size: int,
+        num_channels: int,
+        num_nlayers: int = 1,
+        num_degrees: int = 4,
+        edge_dim: int = 4,
+        div: float = 4,
+        pooling: str = "avg",
+        n_heads: int = 1,
+        **kwargs
+    ):
         super().__init__()
         # Build the network
         self.num_layers = num_layers
@@ -89,9 +121,11 @@ class SE3Transformer(nn.Module):
         self.pooling = pooling
         self.n_heads = n_heads
 
-        self.fibers = {'in': Fiber(1, atom_feature_size),
-                       'mid': Fiber(num_degrees, self.num_channels),
-                       'out': Fiber(1, num_degrees*self.num_channels)}
+        self.fibers = {
+            "in": Fiber(1, atom_feature_size),
+            "mid": Fiber(num_degrees, self.num_channels),
+            "out": Fiber(1, num_degrees * self.num_channels),
+        }
 
         blocks = self._build_gcn(self.fibers, 1)
         self.Gblock, self.FCblock = blocks
@@ -101,34 +135,50 @@ class SE3Transformer(nn.Module):
     def _build_gcn(self, fibers, out_dim):
         # Equivariant layers
         Gblock = []
-        fin = fibers['in']
+        fin = fibers["in"]
         for i in range(self.num_layers):
-            Gblock.append(GSE3Res(fin, fibers['mid'], edge_dim=self.edge_dim, 
-                                  div=self.div, n_heads=self.n_heads))
-            Gblock.append(GNormSE3(fibers['mid']))
-            fin = fibers['mid']
-        Gblock.append(GConvSE3(fibers['mid'], fibers['out'], self_interaction=True, edge_dim=self.edge_dim))
+            Gblock.append(
+                GSE3Res(
+                    fin,
+                    fibers["mid"],
+                    edge_dim=self.edge_dim,
+                    div=self.div,
+                    n_heads=self.n_heads,
+                )
+            )
+            Gblock.append(GNormSE3(fibers["mid"]))
+            fin = fibers["mid"]
+        Gblock.append(
+            GConvSE3(
+                fibers["mid"],
+                fibers["out"],
+                self_interaction=True,
+                edge_dim=self.edge_dim,
+            )
+        )
 
         # Pooling
-        if self.pooling == 'avg':
+        if self.pooling == "avg":
             Gblock.append(GAvgPooling())
-        elif self.pooling == 'max':
+        elif self.pooling == "max":
             Gblock.append(GMaxPooling())
 
         # FC layers
         FCblock = []
-        FCblock.append(nn.Linear(self.fibers['out'].n_features, self.fibers['out'].n_features))
+        FCblock.append(
+            nn.Linear(self.fibers["out"].n_features, self.fibers["out"].n_features)
+        )
         FCblock.append(nn.ReLU(inplace=True))
-        FCblock.append(nn.Linear(self.fibers['out'].n_features, out_dim))
+        FCblock.append(nn.Linear(self.fibers["out"].n_features, out_dim))
 
         return nn.ModuleList(Gblock), nn.ModuleList(FCblock)
 
     def forward(self, G):
         # Compute equivariant weight basis from relative positions
-        basis, r = get_basis_and_r(G, self.num_degrees-1)
+        basis, r = get_basis_and_r(G, self.num_degrees - 1)
 
         # encoder (equivariant layers)
-        h = {'0': G.ndata['f']}
+        h = {"0": G.ndata["f"]}
         for layer in self.Gblock:
             h = layer(h, G=G, r=r, basis=basis)
 
