@@ -79,8 +79,8 @@ def generate_dataset(num_sims, length, sample_freq):
     if args.simulation == 'charged':
         ds["charges"] = list()
 
+    t = time.time()
     def compute(args, ds, i):
-        t = time.time()
         if args.simulation == 'springs':
             loc, vel, edges, clamp = sim.sample_trajectory(
                 T=length, sample_freq=sample_freq)
@@ -105,10 +105,11 @@ def generate_dataset(num_sims, length, sample_freq):
             ds["charges"].append(charges)
         ds["clamp"].append(clamp)
 
-        print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
+        if i % 100 == 0:
+            print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
         return ds
 
-    ds = Parallel(n_jobs=8)(delayed(compute)(args, ds, i) for i in range(num_sims))
+    ds = Parallel(n_jobs=1)(delayed(compute)(args, ds, i) for i in range(num_sims))
     result = {}
     for data_dict in ds:
         for k, v in data_dict.items():
@@ -138,6 +139,7 @@ ds["train"] = generate_dataset(args.num_train,
                                args.sample_freq)
 ds["train"]["git_commit"] = str(git_commit)
 ds["train"]["args"] = args_dict
+ds["train"]["box_size"] = sim.boxsize
 
 print("Generating {} test simulations".format(args.num_test))
 ds["test"] = generate_dataset(args.num_test,
@@ -145,6 +147,7 @@ ds["test"] = generate_dataset(args.num_test,
                               args.sample_freq)
 ds["test"]["git_commit"] = str(git_commit)
 ds["test"]["args"] = args_dict
+ds["test"]["box_size"] = sim.boxsize
 
 # Save dataset to file.
 for ds_type in ["train", "test"]:

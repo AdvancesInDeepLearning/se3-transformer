@@ -398,7 +398,6 @@ class ArgonSim(object):
         # self.box_size = 100
         self.dim = dim
         self.number_of_cells = 2
-        self.density = 0.8
         self.init_pos = InitializeFCC(self.number_of_cells, self.density)
         self.box_size = self.init_pos.get_boxsize()
         self.n_balls = self.init_pos.get_n_particles()
