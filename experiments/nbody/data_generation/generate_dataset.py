@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 import subprocess
 import pickle
+from joblib import Parallel, delayed
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--simulation', type=str, default='charged',
@@ -78,7 +79,7 @@ def generate_dataset(num_sims, length, sample_freq):
     if args.simulation == 'charged':
         ds["charges"] = list()
 
-    for i in range(num_sims):
+    def compute(args, ds, i):
         t = time.time()
         if args.simulation == 'springs':
             loc, vel, edges, clamp = sim.sample_trajectory(
@@ -97,15 +98,26 @@ def generate_dataset(num_sims, length, sample_freq):
         ds["E"].append(energies[..., 0])
         ds["U"].append(energies[..., 1])
         ds["K"].append(energies[..., 2])
-
-        if i % 100 == 0:
-            print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
         ds["points"].append(loc)
         ds["vel"].append(vel)
         ds["edges"].append(edges)
         if args.simulation == 'charged':
             ds["charges"].append(charges)
         ds["clamp"].append(clamp)
+
+        print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
+        return ds
+
+    ds = Parallel(n_jobs=8)(delayed(compute)(args, ds, i) for i in range(num_sims))
+    result = {}
+    for data_dict in ds:
+        for k, v in data_dict.items():
+            if k in result:
+                result[k].append(v)
+            else:
+                result[k] = [v]
+
+    ds = result
 
     for key in ["points", "vel", "edges", "E", "U", "K"]:
         ds[key] = np.stack(ds[key])
