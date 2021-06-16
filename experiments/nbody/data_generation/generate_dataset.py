@@ -109,7 +109,7 @@ def generate_dataset(num_sims, length, sample_freq):
             print("Iter: {}, Simulation time: {}".format(i, time.time() - t))
         return ds
 
-    ds = Parallel(n_jobs=1)(delayed(compute)(args, ds, i) for i in range(num_sims))
+    ds = Parallel(n_jobs=-1)(delayed(compute)(args, ds, i) for i in range(num_sims))
     result = {}
     for data_dict in ds:
         for k, v in data_dict.items():
@@ -139,7 +139,7 @@ ds["train"] = generate_dataset(args.num_train,
                                args.sample_freq)
 ds["train"]["git_commit"] = str(git_commit)
 ds["train"]["args"] = args_dict
-ds["train"]["box_size"] = sim.boxsize
+ds["train"]["box_size"] = sim.box_size
 
 print("Generating {} test simulations".format(args.num_test))
 ds["test"] = generate_dataset(args.num_test,
@@ -147,11 +147,11 @@ ds["test"] = generate_dataset(args.num_test,
                               args.sample_freq)
 ds["test"]["git_commit"] = str(git_commit)
 ds["test"]["args"] = args_dict
-ds["test"]["box_size"] = sim.boxsize
+ds["test"]["box_size"] = sim.box_size
 
 # Save dataset to file.
 for ds_type in ["train", "test"]:
-    filename = "ds_" + ds_type + suffix + ".pkl"
+    filename = "adl/ds_" + ds_type + suffix + ".pkl"
     with open(filename, "wb") as file:
         pickle.dump(ds[ds_type], file)
 
