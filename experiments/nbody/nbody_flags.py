@@ -37,10 +37,10 @@ def get_flags():
     # Data
     # An argument to specify which dataset type to use (for now)
     parser.add_argument('--ri_data_type', type=str, default="charged",
-                        choices=['charged', 'charged_infer', 'springs',
+                        choices=['charged', 'charged_infer', 'springs', 'argon',
                                  'springs_infer'])
     # location of data for relational inference
-    parser.add_argument('--ri_data', type=str, default='data_generation')
+    parser.add_argument('--ri_data', type=str, default='data_generation/adl')
     parser.add_argument('--data_str', type=str, default='my_datasetfile')
     # how many time steps to predict into the future
     parser.add_argument('--ri_delta_t', type=int, default=10)

@@ -1,4 +1,5 @@
-from synthetic_sim import ChargedParticlesSim, SpringSim, ArgonSim
+from synthetic_sim import ChargedParticlesSim, SpringSim
+from synthetic_sim import ArgonSim
 import time
 import numpy as np
 import argparse
@@ -122,11 +123,23 @@ def generate_dataset(num_sims, length, sample_freq):
 
     for key in ["points", "vel", "edges", "E", "U", "K"]:
         ds[key] = np.stack(ds[key])
+        ds[key] = ds[key].reshape(ds[key].shape[0], *ds[key].shape[2:])
+
+    ds['delta_T'] = ds['delta_T'][0]
+    ds['sample_freq'] = ds['sample_freq'][0]
+
     for key in ["E", "U", "K"]:
         ds[key] = np.mean(ds[key], axis=0)
+
     if args.simulation == 'charged':
         ds["charges"] = np.stack(ds["charges"])
+        ds["charges"] = ds["charges"].reshape(ds["charges"].shape[0], *ds["charges"].shape[2:])
+
     ds["clamp"] = np.stack(ds["clamp"])
+    ds["clamp"] = ds["clamp"].reshape(ds["clamp"].shape[0], *ds["clamp"].shape[2:])
+
+    # ds['points'] = np.moveaxis(ds['points'], 3, 2)
+    # ds['vel'] = np.moveaxis(ds['vel'], 3, 2)
 
     return ds
 

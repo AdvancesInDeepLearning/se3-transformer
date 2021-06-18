@@ -231,9 +231,10 @@ if __name__ == '__main__':
     wandb.save('*.txt')
 
     # Where the magic is
-    try:
-        main(FLAGS, UNPARSED_ARGV)
-    except Exception:
-        import pdb, traceback
-        traceback.print_exc()
-        pdb.post_mortem()
+    main(FLAGS, UNPARSED_ARGV)
+    # try:
+    #     main(FLAGS, UNPARSED_ARGV)
+    # except Exception:
+    #     import pdb, traceback
+    #     traceback.print_exc()
+    #     pdb.post_mortem()
