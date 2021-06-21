@@ -725,16 +725,17 @@ class InitializeFCC():
         self.density = density
         self.n_unit_cell = 4
         self.name = "fcc"
+        # 4 * 2 ** 3 = 32
         self.n_particles = self.n_unit_cell * self.number_of_cells ** 3
-        self.boxsize = np.cbrt(self.n_particles / self.density)
-        print("The size of the box is: {}".format(self.boxsize))
+        self.box_size = np.cbrt(self.n_particles / self.density)
+        print("The size of the box is: {}".format(self.box_size))
         self.noise_level = noise_level
 
     def get_n_particles(self):
         return self.n_particles
     
     def get_boxsize(self):
-        return self.boxsize
+        return self.box_size
 
     def __call__(self):
         """Generate a Face Centered Cubic lattice.
@@ -744,10 +745,10 @@ class InitializeFCC():
         """
           # cubic root of N/density
         init_pos = []
-        fcc_offset = 0.5 * self.boxsize / self.number_of_cells
-        for x in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
-            for y in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
-                for z in np.linspace(0, self.boxsize, self.number_of_cells, endpoint=False):
+        fcc_offset = 0.5 * self.box_size / self.number_of_cells
+        for x in np.linspace(0, self.box_size, self.number_of_cells, endpoint=False):
+            for y in np.linspace(0, self.box_size, self.number_of_cells, endpoint=False):
+                for z in np.linspace(0, self.box_size, self.number_of_cells, endpoint=False):
                     init_pos.append([x, y, z])
                     init_pos.append([x + fcc_offset, y + fcc_offset, z])
                     init_pos.append([x + fcc_offset, y, z + fcc_offset])

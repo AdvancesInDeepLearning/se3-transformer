@@ -77,8 +77,8 @@ def generate_dataset(num_sims, length, sample_freq):
         "delta_T": sim._delta_T,
         "sample_freq": sample_freq,
     }
-    if args.simulation == 'charged':
-        ds["charges"] = list()
+    # if args.simulation == 'charged':
+    ds["charges"] = list()
 
     t = time.time()
     def compute(args, ds, i):
@@ -102,8 +102,8 @@ def generate_dataset(num_sims, length, sample_freq):
         ds["points"].append(loc)
         ds["vel"].append(vel)
         ds["edges"].append(edges)
-        if args.simulation == 'charged':
-            ds["charges"].append(charges)
+        # if args.simulation == 'charged':
+        ds["charges"].append(charges)
         ds["clamp"].append(clamp)
 
         if i % 100 == 0:
@@ -131,9 +131,9 @@ def generate_dataset(num_sims, length, sample_freq):
     for key in ["E", "U", "K"]:
         ds[key] = np.mean(ds[key], axis=0)
 
-    if args.simulation == 'charged':
-        ds["charges"] = np.stack(ds["charges"])
-        ds["charges"] = ds["charges"].reshape(ds["charges"].shape[0], *ds["charges"].shape[2:])
+    # if args.simulation == 'charged':
+    ds["charges"] = np.stack(ds["charges"])
+    ds["charges"] = ds["charges"].reshape(ds["charges"].shape[0], *ds["charges"].shape[2:])
 
     ds["clamp"] = np.stack(ds["clamp"])
     ds["clamp"] = ds["clamp"].reshape(ds["clamp"].shape[0], *ds["clamp"].shape[2:])

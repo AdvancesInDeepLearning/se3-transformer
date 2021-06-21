@@ -54,7 +54,9 @@ class RIDataset(torch.utils.data.Dataset):
 
         self.data = data
         self.len = data['points'].shape[0]
-        self.n_frames = data['points'].shape[1]
+        # TODO: Inspect number of frames, and decide how many
+        # TODO: to drop at the very end
+        self.n_frames = data['points'].shape[1]  # 49 -> 24/25
         self.n_points = data['points'].shape[2]
 
         if split == 'train':
