@@ -152,7 +152,7 @@ ds["train"] = generate_dataset(args.num_train,
                                args.sample_freq)
 ds["train"]["git_commit"] = str(git_commit)
 ds["train"]["args"] = args_dict
-ds["train"]["box_size"] = sim.box_size
+ds["train"]["box_size"] = sim.boxsize
 
 print("Generating {} test simulations".format(args.num_test))
 ds["test"] = generate_dataset(args.num_test,
@@ -160,7 +160,7 @@ ds["test"] = generate_dataset(args.num_test,
                               args.sample_freq)
 ds["test"]["git_commit"] = str(git_commit)
 ds["test"]["args"] = args_dict
-ds["test"]["box_size"] = sim.box_size
+ds["test"]["box_size"] = sim.boxsize
 
 # Save dataset to file.
 for ds_type in ["train", "test"]:
