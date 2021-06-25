@@ -59,6 +59,7 @@ def get_flags():
     parser.add_argument('--restore', type=str, default=None,
                         help="Path to model to restore")
     parser.add_argument('--verbose', type=int, default=0)
+    parser.add_argument('--rep', type=int, default=0)
 
     # Miscellanea
     parser.add_argument('--num_workers', type=int, default=4,
