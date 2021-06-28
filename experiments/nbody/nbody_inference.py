@@ -174,8 +174,7 @@ def main(FLAGS, UNPARSED_ARGV):
 
     # Run training
     print('Begin inference')
-    for epoch in range(FLAGS.num_epochs):
-        test_epoch(epoch, model, task_loss, test_loader, FLAGS, dT)
+    test_epoch(0, model, task_loss, test_loader, FLAGS, dT)
 
 
 if __name__ == '__main__':
