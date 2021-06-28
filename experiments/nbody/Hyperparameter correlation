@@ -1,0 +1,10 @@
+Performance vs. Hyperparameter w.r.t Test loss:
+
+num_channels: -0.881
+num_layers: -0.208
+div: -0.188
+num_degrees: 0.163
+head: 0.087
+
+
+
