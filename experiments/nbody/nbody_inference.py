@@ -71,7 +71,7 @@ def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS, dT):
 
         # run model forward and compute loss
         pred = model(g).detach()
-        probits.append(pred)
+        probits.append(to_np(pred))
 
         loss_epoch += to_np(loss_fnc(pred, y)/len(dataloader))
         acc = get_acc(pred, x_T, v_T, y=y)
